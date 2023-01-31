@@ -1,0 +1,134 @@
+/* 文章类目对应的颜色 */
+.frontend {
+  /* #38bdf8 */
+  @apply text-sky-400;
+}
+
+.backend {
+  /* #a78bfa */
+  @apply text-purple-400;
+}
+
+.general {
+  /* #fbbf24 */
+  @apply text-amber-400;
+}
+
+.frontend-bg {
+  @apply bg-sky-100;
+}
+
+.backend-bg {
+  @apply bg-purple-100;
+}
+
+.general-bg {
+  @apply bg-amber-100;
+}
+
+.transi-300 {
+  @apply transition-transform transform duration-300;
+}
+
+.icon-hover {
+  @apply transition-colors duration-300 hover:bg-gray-200 rounded-md;
+}
+
+.icon-box {
+  @apply cursor-pointer p-2 transition-colors duration-300 rounded-md flex items-center;
+}
+
+/* 首页和 persona 导航的按钮样式 */
+.nav {
+  @apply inline-block transition-all duration-300 cursor-pointer
+   tracking-wider font-semibold text-lg;
+}
+
+.nav-btn {
+  @apply text-gray-700 outline-none border-none px-3 py-1 rounded-md;
+}
+
+.nav-btn-focus {
+  @apply bg-gray-600 text-white hover:(bg-gray-700 text-white);
+}
+
+.nav-btn-hover {
+  @apply text-gray-700 bg-white hover:(bg-gray-400 text-white);
+}
+
+.nav-text-focus {
+  @apply text-gray-600 hover:(text-gray-700);
+}
+
+.nav-text-hover {
+  @apply hover:text-gray-500;
+}
+
+.latest-dot {
+  @apply inline-block w-2 h-2 rounded-1/2 bg-green-400 ml-3;
+}
+
+.h-leave-header {
+  height: calc(100vh - 5rem);
+}
+
+.text-cyber {
+  font-family: "Let's go Digital regular", "Comic Sans MS", ui-monospace,
+    SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+}
+
+.text-yuanrun {
+  font-family: "Comic Sans MS", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.emphasis-text {
+  @apply tracking-wider cursor-pointer
+  hover:(underline underline-green-300 underline-offset-4 underline-2);
+}
+
+.primary-btn {
+  @apply rounded-md text-white bg-green-400 hover:bg-green-500 px-2 py-1.5 cursor-pointer
+  transition-colors duration-250 flex items-center;
+}
+
+a {
+  @apply text-gray-500;
+}
+
+th {
+  text-align: center;
+}
+
+tbody tr {
+  vertical-align: middle;
+}
+
+td,
+thead th:not(:first-of-type) {
+  padding: 10px;
+  cursor: pointer;
+}
+
+tbody tr td:not(:first-of-type) {
+  text-align: center;
+}
+
+.ant-input:focus {
+  @apply ring-2.5 ring-green-400;
+}
+
+.ant-select-focused {
+  @apply ring-2.5 ring-green-400 rounded-md transition-all duration-300;
+}
+
+.has-error {
+  .ant-input:focus {
+    @apply ring-2.5 ring-red-400;
+  }
+
+  .ant-select-focused {
+    @apply ring-2.5 ring-red-400 rounded-md transition-all duration-300;
+  }
+}

@@ -1,0 +1,124 @@
+/* 重置 antdv a 标签的默认主色 */
+.reset-link a {
+  color: inherit;
+  display: inline-block;
+  &:hover { color: inherit }
+  &:focus { color: inherit }
+}
+
+/* antdv 中 spin 组件加载文字的样式重置 */
+// Comic Sans MS
+.ant-spin-text {
+  font-family: "Let's go Digital regular", "Comic Sans MS",ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; 
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.ant-popover-inner {
+  box-shadow: 0 0px 20px fade(#000, 15%);
+}
+
+.ant-message {
+  z-index: 2500;
+  &-info {
+    display: flex;
+    align-items: center;
+  }
+  &-success {
+    display: flex;
+    align-items: center;
+  }
+  &-warning {
+    display: flex;
+    align-items: center;
+  }
+  &-error {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.ant-empty-description {
+  user-select: none;
+}
+
+.ant-spin-nested-loading > div > .ant-spin {
+  max-height: inherit;
+}
+
+.ant-popover-inner-content {
+  padding: 0;
+}
+
+.ant-popover-inner {
+  border-radius: 10px;
+}
+
+.ant-modal-header {
+  border-bottom: 0;
+}
+
+.ant-modal-footer {
+  border-top: 0;
+}
+
+.ant-modal {
+  width: 50vw !important;
+  // top: 20vh !important;
+  min-width: 430px;
+}
+
+.ant-tabs-bar {
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.ant-tabs-nav-container {
+  overflow: visible;
+}
+
+.ant-tabs-ink-bar {
+  bottom: 0px;
+}
+
+.ant-select-dropdown {
+  z-index: 1102;
+}
+
+.ant-select-arrow {
+  margin-top: -10px;
+}
+
+.ant-select-arrow .ant-select-arrow-icon {
+  line-height: 1.5;
+}
+
+.ant-select-selection--multiple .ant-select-selection__choice {
+  background: #f3f4f6;
+  border-radius: 5px;
+  border: none;
+  color: #9ca3af;
+
+  .ant-select-selection__choice__content {
+    margin-right: 5px;
+  }
+    
+  .anticon {
+    background: #d1d5db;
+    border-radius: 50%;
+    padding: 2px;
+    vertical-align: 0;
+  }
+    
+}
+
+.anticon {
+  vertical-align: 0;
+}
+
+.ant-empty-description {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: rgb(107, 114, 128);
+  letter-spacing: 0.05rem;
+}
