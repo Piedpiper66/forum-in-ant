@@ -38,6 +38,14 @@
   @apply cursor-pointer p-2 transition-colors duration-300 rounded-md flex items-center;
 }
 
+a:hover {
+  color: #26d362 !important;
+}
+
+::selection {
+  background: #26d362 !important;
+}
+
 /* 首页和 persona 导航的按钮样式 */
 .nav {
   @apply inline-block transition-all duration-300 cursor-pointer
@@ -88,6 +96,15 @@
   hover:(underline underline-green-300 underline-offset-4 underline-2);
 }
 
+.emphasis-content,
+.emphasis-name {
+  @apply text-gray-600;
+}
+
+.emphasis-title {
+  @apply text-green-400;
+}
+
 .primary-btn {
   @apply rounded-md text-white bg-green-400 hover:bg-green-500 px-2 py-1.5 cursor-pointer
   transition-colors duration-250 flex items-center;
@@ -115,8 +132,72 @@ tbody tr td:not(:first-of-type) {
   text-align: center;
 }
 
+.md-content {
+  pre {
+    @apply rounded-lg p-3 my-4 shadow-xl;
+
+    div {
+      padding: 10px 15px;
+      border-radius: 5px;
+      white-space: pre-line;
+      font-size: 14px;
+      margin: 10px 0px;
+    }
+
+    span {
+      font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
+      line-height: 1.6;
+    }
+  }
+
+  a {
+    @apply underline underline-offset-2 underline-green-300;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply py-3 m-0;
+  }
+
+  h1 {
+    @apply text-3xl font-extralight;
+  }
+
+  h2 {
+    @apply text-2xl font-extralight;
+  }
+
+  p {
+    @apply py-3 m-0;
+  }
+
+  blockquote {
+    @apply px-3 py-1 m-0 border-l-5 border-l-gray-300
+  bg-gray-50 text-gray-600 my-3 rounded-sm;
+
+    strong {
+      color: #6a737d;
+    }
+  }
+
+  ol,
+  ul {
+    @apply list-inside my-3;
+  }
+
+  ul {
+    @apply list-disc;
+  }
+
+  img {
+    @apply shadow-md rounded-[10px] cursor-pointer my-2;
+  }
+}
+
 .ant-input:focus {
-  @apply ring-2.5 ring-green-400;
+  @apply ring-2 ring-green-400;
 }
 
 .ant-select-focused {
@@ -131,4 +212,72 @@ tbody tr td:not(:first-of-type) {
   .ant-select-focused {
     @apply ring-2.5 ring-red-400 rounded-md transition-all duration-300;
   }
+}
+@-webkit-keyframes el-skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@keyframes el-skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+.el-skeleton {
+  width: 100%;
+}
+.el-skeleton.is-animated .el-skeleton__item {
+  background: -webkit-gradient(
+    linear,
+    left top,
+    right top,
+    color-stop(25%, #f2f2f2),
+    color-stop(37%, #e6e6e6),
+    color-stop(63%, #f2f2f2)
+  );
+  background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 37%, #f2f2f2 63%);
+  background-size: 400% 100%;
+  -webkit-animation: el-skeleton-loading 1.4s ease infinite;
+  animation: el-skeleton-loading 1.4s ease infinite;
+}
+
+.el-skeleton__item {
+  background: #f2f2f2;
+  display: inline-block;
+  height: 16px;
+  border-radius: 4px;
+  width: 100%;
+}
+.el-skeleton__p {
+  width: 100%;
+}
+.el-skeleton__p.is-last {
+  width: 61%;
+}
+.el-skeleton__p.is-first {
+  width: 33%;
+}
+.el-skeleton__image {
+  width: unset;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  border-radius: 0;
+}
+.el-skeleton__image svg {
+  fill: #dcdde0;
+  width: 22%;
+  height: 22%;
 }

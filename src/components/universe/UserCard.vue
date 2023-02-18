@@ -44,18 +44,20 @@
           <div class="space-y-2 box-content w-full cursor-default">
             <div class="flex">
               <div class="hover:scale-110 transi-300">
-                <router-link :to="userProfileLink">
+                <router-link :to="userProfileLink" @click="$emit('close')">
                   <img
                     class="w-30 h-30 rounded-1/2 -mt-15 shadow-lg"
                     :src="userInfo.avatar"
+                    data-link
                   />
                 </router-link>
               </div>
               <div class="pl-6 flex-auto">
                 <!-- 用户名 -->
-                <router-link :to="userProfileLink">
+                <router-link :to="userProfileLink" @click="$emit('close')">
                   <span
                     class="inline-block text-3xl font-extrabold text-black truncate text-yuanrun transi-300 hover:scale-110"
+                    data-link
                   >
                     {{ userInfo.username }}
                   </span>
@@ -68,7 +70,7 @@
 
             <!-- 个人介绍 -->
             <div class="text-gray-600 font-medium" title="个性签名">
-              <span v-html="userInfo.introduction"></span>
+              <span v-text="userInfo.introduction"></span>
             </div>
 
             <!-- 个人所在地 -->
@@ -76,7 +78,7 @@
               class="text-gray-600 flex items-center text-lg"
               v-show="userInfo.location"
             >
-              <i class="el-icon-location mr-1"></i>
+              <Icon name="location" class="mr-1" />
               <span class="font-semibold">{{ userInfo.location }}</span>
             </div>
 

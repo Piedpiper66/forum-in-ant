@@ -1,8 +1,8 @@
 <template>
   <a-spin
-    :spinning="$attrs.loading"
+    :spinning="loading"
     size="large"
-    tip="Vue Forum Loading ..."
+    :tip="loadingTip"
     class="select-none"
     ref="loading"
   >
@@ -11,7 +11,7 @@
     <transition-group name="slide-fade" mode="out-in" tag="div">
       <slot></slot>
       <div
-        v-if="$attrs.loading"
+        v-if="loading"
         key="loading"
         :style="{ height: loadingHeight }"
       ></div>
@@ -23,14 +23,44 @@
 <script>
 export default {
   name: "PageLoading",
+  props: ["loading", "title"],
   data() {
     return {
       loadingHeight: 0,
+      dots: " .",
+      timer: null,
     };
   },
+  computed: {
+    originTip() {
+      return this.title || "Vue Forum Loading ";
+    },
+    loadingTip() {
+      return this.originTip + this.dots;
+    },
+  },
+  watch: {
+    loading() {
+      clearInterval(this.timer);
+    },
+  },
   mounted() {
-    this.loadingHeight =
-      innerHeight - this.$refs.loading.$el.offsetTop - 20 + "px";
+    // const top = this.$refs.loading.getBoundingClientRect().y;
+    const top = this.$refs.loading.$el.offsetTop;
+
+    this.loadingHeight = window.innerHeight - top - 50 + "px";
+
+    let i = 1;
+    let dot = " .";
+
+    this.timer = setInterval(() => {
+      if (i === 4) i = 1;
+      this.dots = dot.repeat(i);
+      i++;
+    }, 400);
+  },
+  destroyed() {
+    clearInterval(this.timer);
   },
 };
 </script>

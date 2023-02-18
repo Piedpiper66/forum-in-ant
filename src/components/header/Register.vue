@@ -6,7 +6,7 @@
     :zIndex="2499"
     :keyboard="false"
     :dialogStyle="{
-      top: '20vh',
+      top: '15vh',
       minWidth: '430px',
     }"
   >
@@ -218,7 +218,7 @@ export default {
 
             this.$router.push({
               name: "mailcheck",
-              query: { m: aesEncrypt(values.email) },
+              query: { u: aesEncrypt(values.email) },
             });
           } else {
             this.$message.error(message || "未知错误");

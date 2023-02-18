@@ -46,3 +46,7 @@ export const postPrivate = (form) => {
     "post"
   );
 };
+
+export function removeUserDevice(devId) {
+  return handleRequest("/common/u/removeDevice", { devId }, "post");
+}

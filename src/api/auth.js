@@ -5,8 +5,8 @@ export function login(userinfo) {
   return authRequest("/auth/login", { ...userinfo });
 }
 
-export function logout(userId) {
-  return authRequest("/auth/logout", { userId });
+export function logout(userId, devId) {
+  return authRequest("/auth/logout", { userId, devId });
 }
 
 // export function register(userinfo) {
@@ -38,6 +38,20 @@ export function createMailCaptcha(email, newEmail) {
 
 export function resendCaptcha(data = { username: "", date }) {
   return authRequest("/auth/resendMail", data);
+}
+
+// 发送一则普通的验证邮箱
+export function sendOneCheckMail(data, cancel = false) {
+  return authRequest("/auth/send-checkEmail", data, "post", null, cancel);
+}
+
+export function sendActiveMail(data) {
+  return authRequest("/auth/send-active-mail", data);
+}
+
+// 用户设备出现风险，校验身份
+export function copeWithNoRisk(id) {
+  return authRequest("/auth/check-with-no-risk", { id });
 }
 
 export function checkMailCaptcha(data = { username, date, captcha }) {
@@ -74,28 +88,37 @@ export function removeAccount(userId) {
   return authRequest("/common/u/removeAccount", { userId });
 }
 
-async function authRequest(url, query, method, headers) {
+export function sendUserDevice(data) {
+  return authRequest("/common/u/sendUserDeviceInfo", data);
+}
+
+async function authRequest(url, query, method, headers, cancel) {
   try {
+    // ctx.body
     const {
-      data: { code, data, message, status },
+      data: { code, data, message, status, isActive },
     } = await request({
       method: method || "POST",
       url,
       data: query,
       headers,
+      cancel,
     });
+
+    // console.log(code, data, message, status);
     if (code === 200) {
-      return { data, status };
+      return { data, status, code };
     } else {
       console.warn("auth.js", code, data, message);
 
-      return { message, status };
+      return { message, status, code, isActive };
     }
   } catch (error) {
     const message = error.message || error;
+    const status = error.status || -1;
 
     console.error(message);
 
-    return { message: "未知错误" };
+    return { message, status };
   }
 }

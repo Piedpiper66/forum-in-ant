@@ -1,4 +1,32 @@
 const { resolve } = require("path");
+const webpack = require("webpack");
+const CompressionWebpackPlugin = require("compression-webpack-plugin");
+// const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
+
+const isProd = process.env.NODE_ENV === "production";
+
+// cdn预加载使用
+const externals = !isProd
+  ? {}
+  : {
+      vue: "Vue",
+      "vue-router": "VueRouter",
+      vuex: "Vuex",
+      axios: "axios",
+    };
+
+const cdn = {
+  // 生产环境
+  build: {
+    js: [
+      "https://cdn.jsdelivr.net/npm/vue@2.6.11/dist/vue.min.js",
+      "https://cdn.jsdelivr.net/npm/vue-router@3.2.0/dist/vue-router.min.js",
+      "https://cdn.jsdelivr.net/npm/vuex@3.4.0/dist/vuex.min.js",
+      "https://cdn.jsdelivr.net/npm/axios@1.2.1/dist/axios.min.js",
+    ],
+  },
+};
 
 module.exports = {
   productionSourceMap: false,
@@ -45,6 +73,77 @@ module.exports = {
     const imagesRule = config.module.rule("images");
     imagesRule.exclude.add(resolve("src/assets/svg"));
     config.module.rule("images").test(/\.(png|jpe?g|gif|svg)(\?.*)?$/);
+
+    //
+    if (isProd) {
+      config.optimization.delete("splitChunks");
+
+      config.plugin("html").tap((args) => {
+        args[0].cdn = cdn.build;
+        return args;
+      });
+    }
+  },
+  configureWebpack: {
+    resolve: {
+      alias: {
+        "@ant-design/icons/lib/dist$": resolve(
+          __dirname,
+          "src/utils/antIcons.js"
+        ),
+      },
+    },
+    plugins: [
+      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+      new CompressionWebpackPlugin({
+        test: /\.(js|css|svg|woff|ttf|json|html)$/,
+        threshold: 10240,
+        minRatio: 0.8,
+      }),
+    ],
+    externals,
+    optimization: {
+      minimizer: [
+        new TerserPlugin({
+          test: [/\.m?js(\?.*)?$/i, /\.vue(\?.*)?$/i, /\.ss(\?.*)?$/i],
+          parallel: true,
+          extractComments: true,
+          terserOptions: {
+            compress: {
+              drop_console: true,
+              drop_debugger: true,
+            },
+          },
+        }),
+      ],
+      splitChunks: {
+        chunks: "all",
+        minSize: 30000, // 字节 引入的文件大于30kb才进行分割
+        minChunks: 1, // 模块至少使用次数
+        maxAsyncRequests: 5, // 同时加载的模块数量最多是5个，只分割出同时引入的前5个文件
+        maxInitialRequests: 3, // 首页加载的时候引入的文件最多3个
+        automaticNameDelimiter: "~", // 缓存组和生成文件名称之间的连接符
+        name: true, // 缓存组里面的filename生效，覆盖默认命名
+        cacheGroups: {
+          libs: {
+            name: "chunk-libs",
+            test: /[\\/]node_modules[\\/]/,
+            priority: -10,
+            chunks: "initial",
+          },
+          commons: {
+            name: "chunk-commons",
+            test: resolve("src/components"), // can customize your rules
+            minChunks: 2, //  minimum common number
+            priority: 10,
+            reuseExistingChunk: true,
+          },
+        },
+      },
+      runtimeChunk: {
+        name: "manifest",
+      },
+    },
   },
   css: {
     loaderOptions: {
@@ -66,10 +165,5 @@ module.exports = {
     hotOnly: false,
     // 将 host:port 的请求转换为localhost: 3000
     proxy: "http://localhost:3000",
-  },
-  pluginOptions: {
-    windicss: {
-      // see https://github.com/windicss/vite-plugin-windicss/blob/main/packages/plugin-utils/src/options.ts
-    },
   },
 };

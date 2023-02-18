@@ -35,7 +35,7 @@
         :not-found-content="notFoundContent"
         :dropdownRender="reRenderDropdown"
         :getPopupContainer="() => $refs.searchContent"
-        @search="handleSearch"
+        @search="searchDebounceFn"
         @change="handleChange"
         @dropdownVisibleChange="handleDropdownVisible"
         @hook:mounted="avoidWindowScroll"
@@ -64,10 +64,10 @@
               }"
             >
               <div class="flex space-x-4 py-2 text-gray-400 text-base">
-                <a-avatar :src="item.avatar"></a-avatar>
+                <img :src="item.avatar"  class="rounded-1/2 w-8.5 h-8.5" />
                 <div class="flex flex-col justify-center">
-                  <span v-html="highlightKeyword(item.username)"></span>
-                  <span v-html="highlightKeyword(item.fullname)"></span>
+                  <span v-hightlight:[searchValue]="item.username"></span>
+                  <span v-hightlight:[searchValue]="item.fullname"></span>
                 </div>
               </div>
             </router-link>
@@ -93,7 +93,7 @@
                       <Icon name="resolve" className="text-gray-500" />
                     </span>
                     <span
-                      v-html="highlightKeyword(item.title, 'title')"
+                      v-hightlight:[searchValue].title="item.title"
                       class="text-green-400"
                     ></span>
                   </span>
@@ -102,7 +102,9 @@
                 </div>
                 <!-- 正文 -->
                 <p
-                  v-html="highlightKeyword(item.content || item.markdown)"
+                  v-hightlight:[searchValue].content="
+                    item.content || item.markdown
+                  "
                   class="text-xs break-normal whitespace-pre-line"
                 ></p>
               </router-link>
@@ -124,9 +126,6 @@
 </template>
 
 <script>
-// 用于辅助高亮数据中的关键字
-const toolDiv = document.createElement("div");
-
 export default {
   name: "Search",
   data() {
@@ -145,6 +144,11 @@ export default {
       showSelectLoadingIcon: false,
       notFoundContent: null,
     };
+  },
+  computed: {
+    searchDebounceFn() {
+      return this.debounce(this.handleSearch, 100, false, this);
+    },
   },
   watch: {
     visible(status) {
@@ -166,10 +170,12 @@ export default {
 
       this.searchValue = query;
 
+      this.groupOptions = [];
+
       if (query && query.length < 2) {
         this.isInvalidInput = true;
 
-        this.groupOptions = [];
+        // this.groupOptions = [];
 
         return false;
       } else if (query.length >= 2) {
@@ -177,7 +183,7 @@ export default {
 
         this.isInvalidInput = false;
 
-        this.groupOptions = [];
+        // this.groupOptions = [];
 
         // 用于查看更多的链接中的参数值
         this.queryForMoreResult = query;
@@ -221,39 +227,6 @@ export default {
         this.showSelectLoadingIcon = false;
       }
     },
-    /**
-     * @param {string} text 需要解析的文本
-     * @param {"title" | "content"} type 是标题还是内容
-     */
-    highlightKeyword(text, type = "content") {
-      if (text) {
-        // 被高亮的关键字前后的字符数量，超过切换为 `...`, 否则原样拼接
-        // const adjacentLen = 50;
-        toolDiv.innerHTML = text;
-
-        // 目标关键字所在文本的起始序号
-        const startIndex = text.indexOf(this.searchValue);
-
-        // 如果文本不包含关键字，直接返回所有文字内容
-        if (startIndex === -1) return toolDiv.textContent;
-
-        const reg = new RegExp(this.searchValue, "g");
-
-        const replaceNode = `<span class='emphasis-${type} font-bold text-shadow-sm'>${this.searchValue}</span>`;
-
-        text = text
-          .replace(/[<>\n]/g, (str) => {
-            if (str === "<") return "&lt;";
-            else if (str === ">") return "&gt;";
-            else return "\t";
-          })
-          .replace(reg, () => replaceNode);
-
-        return text;
-      }
-
-      return text;
-    },
     handleChange() {
       this.visible = false;
       this.searchValue = void 0;
@@ -280,16 +253,8 @@ export default {
     max-height: 70vh;
   }
 
-  .emphasis-content {
-    @apply text-gray-600;
-  }
-
   .ant-popover-arrow {
     display: none !important;
   }
-}
-
-.emphasis-title {
-  @apply text-green-400;
 }
 </style>

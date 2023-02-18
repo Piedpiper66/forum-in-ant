@@ -1,6 +1,6 @@
 <template>
   <!-- 主页 -->
-  <div id="home" class="pt-10 w-full">
+  <div id="home" class="pt-10 w-full flex flex-col">
     <!-- 导航栏 -->
     <a-row type="flex" class="space-x-3">
       <a-col class="space-x-3">
@@ -67,26 +67,28 @@
           @click="toggleEditor"
         >
           <Icon name="plus" className="font-bold" />
-          <span>{{$store.state.app.unfinishedEdit ? editorShow ? '关闭草稿' : '打开草稿' : '创建新主题'}}</span>
+          <span>{{unfinishedEdit ? editorShow ? '关闭草稿' : '打开草稿' : '创建新主题'}}</span>
         </div>
       </a-col>
     </a-row>
 
-    <!-- 内容视图 -->
-    <a-spin
-      :spinning="loading"
-      v-show="loading"
-      size="large"
-      tip="Vue Forum Loading ..."
-      class="select-none"
-    >
-      <div class="loading-h"></div>
-      <Icon slot="indicator" name="smile" size="2.25rem" spin />
-    </a-spin>
-    <router-view
-      @callForDisplay="onChildReady"
-      v-if="isRouterAlive"
-    ></router-view>
+    <div class="flex-1">
+      <!-- 内容视图 -->
+      <a-spin
+        :spinning="loading"
+        v-show="loading"
+        size="large"
+        tip="Vue Forum Loading ..."
+        class="select-none"
+      >
+        <Icon slot="indicator" name="smile" size="2.25rem" spin />
+        <div class="loading-h"></div>
+      </a-spin>
+      <router-view
+        @callForDisplay="onChildReady"
+        v-if="isRouterAlive"
+      ></router-view>
+    </div>
   </div>
 </template>
 
@@ -179,6 +181,9 @@ export default {
           this.removeOverview();
 
           this.isInited && this.setSelectsValueFromRoute();
+        } else {
+          this.addOverview();
+          this.setSelectsValueFromRoute();
         }
 
         // 当从非 select 跳转到指定类别或标签对应的dataList时，select 也应该更改
@@ -212,7 +217,11 @@ export default {
     },
   },
   async created() {
-    await this.setCategories();
+    if (this.categories.length) {
+      this.categoryList = this.categories;
+    } else {
+      await this.setCategories();
+    }
 
     // 如果 $route.params 中存在 category, 则 tagList 使用对应 categoryList 中的 tags
     // prettier-ignore
@@ -263,6 +272,7 @@ export default {
       // prettier-ignore
       const categories = await this.$api.getCategories();
       this.categoryList = categories || [];
+      this.$store.commit("SET_CATEGORY", categories || []);
     },
     async setTags() {
       // prettier-ignore
@@ -391,7 +401,7 @@ export default {
 
 /* 导航视图的最小高，使得正常显示加载图标 */
 .loading-h {
-  min-height: calc(100vh - 9.25rem);
+  min-height: calc(100vh - 20rem);
 }
 
 div.nav-btn {

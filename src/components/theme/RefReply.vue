@@ -3,13 +3,9 @@
     class="inner-reply relative mb-2 border-1 border-solid pl-6 pr-3 py-2 rounded-sm flex"
   >
     <span class="collapse-btn z-10" title="折叠" @click="toggleVisible">
-      <i class="el-icon-arrow-down text-lg font-bold"></i>
+      <Icon name="no-stick-arrow" class="text-gray-400" />
     </span>
-    <Avatar
-      :src="refDetail.avatar"
-      :userId="refDetail.reply_user"
-      :username="refDetail.username"
-    />
+    <img :src="refDetail.avatar" class="w-8.5 h-8.5 rounded-full" />
     <div class="detail w-full ml-3">
       <div class="userInfo flex justify-between">
         <span class="text-gray-400 font-semibold">{{
@@ -23,7 +19,10 @@
           <Icon name="arrow-up" />
         </span>
       </div>
-      <div class="reply-content py-2 mt-2" v-html="refDetail.content"></div>
+      <div
+        class="md-content py-2 mt-2"
+        v-html="refDetail.markdown || refDetail.content"
+      ></div>
     </div>
   </div>
 </template>

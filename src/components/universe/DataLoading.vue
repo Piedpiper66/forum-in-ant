@@ -1,29 +1,45 @@
 <template>
-  <div class="flex justify-center">
-    <div class="loader" :class="{ show: $attrs.show }">
-      <div class="circle"></div>
-      <div class="circle"></div>
-      <div class="circle"></div>
+  <transition name="fadeInOut">
+    <div class="flex justify-center" v-show="show">
+      <div
+        class="loader"
+        :style="{ '--ball-color': color, '--ball-size': size }"
+      >
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+      </div>
     </div>
-  </div>
+  </transition>
 </template>
 
 <script>
 export default {
-  name: "Loading",
-  // props: ["show"],
+  name: "DataLoading",
+  props: {
+    show: Boolean,
+    color: {
+      type: String,
+      default: "#26d362",
+    },
+    size: {
+      type: String,
+      default: "10px",
+    },
+  },
 };
 </script>
 
 <style scoped>
 .loader {
-  opacity: 0;
+  opacity: 1;
   display: flex;
-  /* position: fixed; */
-  /* bottom: 30px; */
-  /* transition: all 0.3s ease-in; */
-  /* left: 50%; */
-  /* transform: translateX(-50%); */
+  /* position: fixed;
+  bottom: 30px;
+  transition: all 0.3s ease-in;
+  left: 50%;
+  transform: translateX(-50%); */
+  /* --ball-color: cornflowerblue; */
 }
 
 .loader.show {
@@ -31,12 +47,12 @@ export default {
 }
 
 .circle {
-  background-color: #34d399;
-  width: 10px;
-  height: 10px;
+  background-color: var(--ball-color);
+  width: var(--ball-size);
+  height: var(--ball-size);
   border-radius: 50%;
   margin: 5px;
-  animation: myBounce 0.5s ease-out infinite;
+  animation: myBounce 0.5s ease-in-out infinite;
 }
 
 .circle:nth-of-type(2) {

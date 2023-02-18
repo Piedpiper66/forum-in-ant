@@ -5,223 +5,89 @@
     placement="bottomRight"
     :overlayStyle="{ zIndex: 1101 }"
     class="userpanel"
-    :getPopupContainer="getRenderNode"
+    :getPopupContainer="() => $root.$el"
     @visibleChange="onPanelShow"
   >
-    <a-avatar
-      :src="userInfo.avatar"
-      :size="35"
-      class="cursor-pointer shadow-md"
-    />
+    <a-badge :count="updatedLen" :overflow-count="50">
+      <img
+        :src="userInfo.avatar"
+        class="rounded-1/2 w-8.5 h-8.5 cursor-pointer shadow-md"
+      />
+    </a-badge>
+
     <a-tabs
       slot="content"
-      default-active-key="1"
+      v-model="currTabKey"
       :tabBarStyle="{ userSelect: 'none' }"
       :animated="false"
+      @change="onTabChange"
       class="user-panel"
     >
       <!-- 私信列表 -->
-      <a-tab-pane key="1">
+      <a-tab-pane :key="tab_p" @click.native="visible = false">
         <span slot="tab" class="py-3 space-x-2 tracking-wider">私信</span>
-        <div class="max-h-70vh">
-          <!-- 最新私信信息 -->
-          <ul v-if="updatedPrivateList.length > 0" class="space-y-2">
-            <li
-              v-for="item in updatedPrivateList"
-              :key="item.id"
-              class="flex py-3 px-5 cursor-pointer hover:(bg-gray-100) space-x-3 transition-colors duration-300"
-            >
-              <router-link :to="`/u/${getFromUser(item, 'username')}`">
-                <el-avatar
-                  :src="getFromUser(item, 'avatar')"
-                  size="medium"
-                ></el-avatar>
-              </router-link>
-              <router-link :to="`/message/${item.id}`">
-                <div class="flex flex-col space-y-2" @click="visible = false">
-                  <span class="text-gray-600 font-light text-base leading-4">{{
-                    getFromUser(item, "username")
-                  }}</span>
-                  <span
-                    class="text-gray-700 font-semibold tracking-wider"
-                    :title="item.title"
-                    >{{ item.title }}</span
-                  >
-                  <span class="text-gray-400">{{
-                    item.createDate | formatTime
-                  }}</span>
-                </div>
-              </router-link>
-            </li>
-          </ul>
-
-          <p class="text-center text-gray-400 tracking-wider py-5">
-            暂时没有最新消息哦 !
-          </p>
-
-          <!-- 历史私信信息 -->
-          <ul v-if="historyPrivateList.length > 0" class="space-y-2">
-            <li
-              v-for="item in historyPrivateList"
-              :key="item.id"
-              class="flex py-3 px-5 cursor-pointer hover:(bg-gray-100) space-x-3 transition-colors duration-300"
-            >
-              <router-link :to="`/u/${getFromUser(item, 'username')}`">
-                <el-avatar
-                  :src="getFromUser(item, 'avatar')"
-                  size="medium"
-                ></el-avatar>
-              </router-link>
-              <router-link :to="`/message/${item.id}`">
-                <div class="flex flex-col space-y-2" @click="visible = false">
-                  <span class="text-gray-600 font-light text-base leading-4">{{
-                    getFromUser(item, "username")
-                  }}</span>
-                  <span
-                    class="text-gray-700 font-semibold tracking-wider"
-                    :title="item.title"
-                    >{{ item.title }}</span
-                  >
-                  <span class="text-gray-400">{{
-                    item.createDate | formatTime
-                  }}</span>
-                </div>
-              </router-link>
-            </li>
-          </ul>
-
-          <!-- 查看更多提示 -->
-          <router-link
-            :to="`/u/${userInfo.username}/messages/receive`"
-            v-show="showMoreIcon"
-          >
-            <!-- prettier-ignore -->
-            <div
-              class="w-23/25 mt-2 mx-auto h-8 text-center leading-10 cursor-pointer
-                  bg-gray-200  hover:(bg-gray-300) transition-colors duration-300"
-              title="查看更多"
-              @click="visible = false"
-            >
-              <i class="el-icon-arrow-down" style="font-size: 1.5rem"></i>
-            </div>
-          </router-link>
-        </div>
+        <!-- #BUG: 滚动到顶部或底部会导致 document 也滚动 -->
+        <PrivatePanel
+          :visible="visible"
+          :isScanned="isPrivateScanned"
+          :username="userInfo.username"
+          @setUpdatedLen="(len) => (updatedLen = len)"
+          ref="private"
+        />
       </a-tab-pane>
 
       <!-- 收藏列表 -->
-      <a-tab-pane key="2">
-        <span slot="tab" class="py-3 space-x-2 tracking-wider">收藏</span>
-        <p class="text-center text-gray-400 tracking-wider py-5">
-          你还没有收藏哦 !
-        </p>
+      <a-tab-pane :key="tab_s" @click.native="visible = false">
+        <span slot="tab" class="py-3 space-x-2 tracking-wider">关注</span>
+        <SubscribePanel :visible="visible" />
       </a-tab-pane>
 
       <!-- 操作 -->
-      <a-tab-pane key="3">
+      <a-tab-pane :key="tab_set" @click.native="visible = false">
         <span slot="tab" class="py-3 space-x-2 tracking-wider">设置</span>
-        <span slot="label" title="设置" class="tracking-wider">设置</span>
-        <ul class="text-base">
-          <li
-            v-for="(item, index) in settingList"
-            :key="index"
-            class="hover:bg-gray-100 cursor-pointer rounded-md px-5 py-2 transition-colors duration-400"
-            @click="visible = !visible"
-          >
-            <router-link
-              :to="item.route"
-              class="tracking-wider w-full inline-block"
-            >
-              <Icon :name="item.icon" size="1.05rem" className="mr-3" />
-              {{ item.title }}
-            </router-link>
-          </li>
-          <li
-            class="hover:bg-gray-100 cursor-pointer rounded-md px-5 py-1 transition-colors duration-400"
-            @click="logout"
-          >
-            <span class="cursor-pointer tracking-wider">
-              <Icon name="logout" size="1rem" class="mr-3 pl-0.5" />
-              退出登录
-            </span>
-          </li>
-        </ul>
+        <SettingPanel :username="userInfo.username" />
       </a-tab-pane>
     </a-tabs>
   </a-popover>
 </template>
 
 <script>
+import PrivatePanel from "./user/PrivatePanel.vue";
+import SubscribePanel from "./user/SubscribePanel.vue";
+import SettingPanel from "./user/SettingPanel.vue";
+
 export default {
   name: "User",
+  components: {
+    PrivatePanel,
+    SubscribePanel,
+    SettingPanel,
+  },
   data() {
     return {
       visible: false,
-      settingList: [
-        {
-          title: "概要",
-          icon: "overview",
-          route: { name: "summary", params: { username: "" } },
-        },
-        {
-          title: "活动",
-          icon: "history",
-          route: { name: "activity", params: { username: "" } },
-        },
-        {
-          title: "草稿",
-          icon: "draft",
-          route: {
-            name: "activityList",
-            params: { username: "", type: "draft" },
-          },
-        },
-        {
-          title: "设置",
-          icon: "setting",
-          route: { name: "account", params: { username: "" } },
-        },
-      ],
+      currTabKey: "2",
+      tab_p: "1",
+      tab_s: "2",
+      tab_set: "3",
+      updatedLen: 0,
       hasSetGrandWidth: false,
-      // 最新私信是否已经查看，查看之后放置于历史私信中
       isPrivateScanned: false,
-      // 列表最大渲染数量
-      tabListLenLimit: 99,
-      // 历史私信
-      historyPrivateList: [],
-      // 最新私信
-      updatedPrivateList: [],
-      // 收藏列表
-      collectionList: [],
-      // 轮询私信 interval
-      pollUserPrivateTimer: null,
     };
   },
   computed: {
     userInfo() {
       return this.$attrs.userInfo;
     },
-    showMoreIcon() {
-      return false;
-    },
   },
-  filters: {
-    formatTime: function (time) {
-      return dateToTypes(time, true);
-    },
-    truncateTitle: (title) => {
-      return title.length > 30 ? title.slice(0, 30) + "..." : title;
-    },
-  },
-  mounted() {
-    this.settingList.forEach(({ route }) => {
-      route.params.username = this.userInfo.username;
-    });
-  },
+  mounted() {},
   methods: {
-    getRenderNode() {
-      return document.getElementById("app");
-    },
     onPanelShow(status) {
+      // 刚打开，且当前为私信 Tab 则表示已经浏览
+      if (status && this.currTabKey === "1") {
+        this.isPrivateScanned = true;
+      }
+
       if (status && !this.hasSetGrandWidth) {
         /**
          *  因不明原因
@@ -229,31 +95,38 @@ export default {
          *  将其重置为 auto
          * */
         this.$nextTick(() => {
-          const widthFullNodeChild =
-            this.$root.$el.getElementsByClassName("ant-popover")[0];
-
-          const widthFullNode = widthFullNodeChild.parentElement.parentElement;
-
-          widthFullNode.style.width = "auto";
-
-          this.hasSetGrandWidth = true;
+          // const widthFullNodeChild =
+          //   this.$root.$el.getElementsByClassName("ant-popover")[0];
+          // const widthFullNode = widthFullNodeChild.parentElement.parentElement;
+          // widthFullNode.style.width = "auto";
+          // this.hasSetGrandWidth = true;
         });
       }
+
+      // 打开后且查看了最新消息后，通过新消息个数的徽标要置空
+      // 即将 updateList 清空，并放入 historyList 中
+      if (!status && this.isPrivateScanned) {
+        this.$refs.private.onScannedUpdatedPrivate();
+      }
     },
-    async logout() {
-      this.$store.dispatch("setEditorStatus", false);
-
-      await this.$store.dispatch("logout");
-
-      location.reload();
+    onTabChange(activeKey) {
+      if (activeKey === "1") this.isPrivateScanned = true;
     },
   },
 };
 </script>
 
 <style lang="postcss" scoped>
+.user-panel {
+  @apply max-w-90;
+}
+
 .user-panel >>> .ant-tabs-ink-bar {
   transition: all 0.3s ease-in-out 0s;
+}
+
+.user-panel >>> .ant-tabs-content {
+  padding-bottom: 1rem;
 }
 
 .user-panel >>> .ant-tabs-nav > div:first-of-type {

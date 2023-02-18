@@ -5,7 +5,7 @@
     class="fixed bottom-0 flex justify-center w-full transform transition-transform duration-600 z-1102"
     :class="[visible ? 'translate-y-0' : 'translate-y-full']"
   >
-    <div class="w-full md:(w-4/5) lg:w-2/3">
+    <div class="w-full md:(w-4/5) lg:w-2/3 min-w-125">
       <!-- 改变编辑器高度的控制条 -->
       <div
         class="grippie"
@@ -31,22 +31,41 @@
           class="first-line select-none relative flex justify-between items-center"
           ref="firstLine"
         >
-          <!-- 左边的按钮 -->
-          <a-popover
-            :visible="typeTogglePopupVisible"
-            placement="bottomLeft"
-            trigger="click"
-            :overlayStyle="{ zIndex: 1501 }"
-            :getPopupContainer="() => $refs.firstLine"
-            @click.stop="typeTogglePopupVisible = !typeTogglePopupVisible"
-          >
-            <!-- prettier-ignore -->
-            <Icon
-              name="plus"
-              size="1.75rem"
-              class="outline-none px-0.5 py-1 border rounded-md mr-2
-              cursor-pointer hover:(bg-gray-300 text-white) transition-colors duration-200"
-            />
+          <div>
+            <!-- 左边的按钮 -->
+            <a-popover
+              :visible="typeTogglePopupVisible"
+              placement="bottomLeft"
+              trigger="click"
+              :overlayStyle="{ zIndex: 1501 }"
+              :getPopupContainer="() => $refs.firstLine"
+              @click.stop="typeTogglePopupVisible = !typeTogglePopupVisible"
+            >
+              <!-- prettier-ignore -->
+              <Icon
+                name="plus"
+                size="1.75rem"
+                class="outline-none px-0.5 py-1 border rounded-md mr-2
+                cursor-pointer hover:(bg-gray-300 text-white)  transition-colors duration-200"
+              />
+              <!-- 弹框 -->
+              <ul
+                slot="content"
+                class="text-gray-500 rounded-md cursor-pointer select-none bg-white"
+              >
+                <li
+                  class="flex items-center px-3 py-2 transition-colors duration-400 space-x-2 hover:bg-green-100 whitespace-nowrap"
+                  data-type="private"
+                  v-for="item in currentEditorConfig.extraOpeList"
+                  :key="item.type"
+                  @click="item.onClick"
+                >
+                  <Icon :name="item.icon"></Icon>
+                  <span class="text-base" v-html="item.title"></span>
+                </li>
+              </ul>
+            </a-popover>
+
             <transition name="slide-fade" mode="out-in">
               <span
                 v-if="currentType === 'replyToTheme'"
@@ -60,11 +79,11 @@
                 class="space-x-1"
                 @click.stop
               >
-                <a-avatar
+                <img
                   v-show="params.avatar"
                   :src="params.avatar"
-                  size="small"
-                ></a-avatar>
+                  class="rounded-1/2 inline-block h-6.5 w-6.5"
+                />
                 <strong class="text-gray-700">
                   {{ params.username }}
                 </strong>
@@ -79,24 +98,7 @@
                 </span>
               </span>
             </transition>
-
-            <!-- 弹框 -->
-            <ul
-              slot="content"
-              class="text-gray-500 rounded-md cursor-pointer select-none bg-white"
-            >
-              <li
-                class="flex items-center px-3 py-2 transition-colors duration-400 space-x-2 hover:bg-green-100"
-                data-type="private"
-                v-for="item in currentEditorConfig.extraOpeList"
-                :key="item.type"
-                @click="item.onClick"
-              >
-                <Icon :name="item.icon"></Icon>
-                <span class="text-base" v-html="item.title"></span>
-              </li>
-            </ul>
-          </a-popover>
+          </div>
 
           <!-- 当前编辑的类型 ===> 创建主题 | 回复他人 -->
           <div
@@ -167,11 +169,12 @@
               label-in-value
               placeholder="搜索并选择用户"
               :filter-option="false"
+              :maxTagCount="3"
               :not-found-content="
                 isFetchingUser ? undefined : searchUserNotfoundMsg
               "
-              @search="(username) => throttle(fetchUser, 300, true)(username)"
-              @change="() => (searchUsers = [])"
+              @search="searchUserThrottleFn"
+              @blur="searchUsers = []"
               option-label-prop="label"
             >
               <a-spin
@@ -183,10 +186,14 @@
                 v-for="user in searchUsers"
                 :key="user.userId"
                 :value="user.userId"
-                :label="user.fullname"
+                :label="user.username"
               >
                 <div class="flex space-x-3 items-center">
-                  <a-avatar :src="user.avatar" role="img"></a-avatar>
+                  <img
+                    :src="user.avatar"
+                    role="img"
+                    style="height: 33px; width: 33px"
+                  />
                   <span>{{ user.username }}</span>
                 </div>
               </a-select-option>
@@ -234,20 +241,14 @@
             cancelText="再想想"
             okText="确定"
             :disabled="currentEditorConfig.canDirectlyCancel"
-            @confirm="
-              onCancelEdit(
-                currentEditorConfig.clearParams.call(currentEditorConfig)
-              )
-            "
+            @confirm="onCancelEdit(() => currentEditorConfig.clearParams())"
             :getPopupContainer="() => $refs.endLine"
           >
             <span
               class="emphasis-text"
               title="关闭并清空"
               v-show="!isSubmitting"
-              @click="
-                () => currentEditorConfig.canDirectlyCancel && closeEditor()
-              "
+              @click="currentEditorConfig.canDirectlyCancel && closeEditor()"
             >
               取消
             </span>
@@ -301,7 +302,7 @@
             回复标题为 "{{params.title }}" 的主题
           </template>
           <template v-else>
-            回复用户 <a-avatar :src="params.avatar"></a-avatar> {{params.username}}
+            回复用户 <img :src="params.avatar" class="rounded-1/2 w-8.5 h-8.5" /> {{params.username}}
           </template>
         </strong>的草稿，您打算如何处理？
       </div>
@@ -324,7 +325,6 @@ import { mapGetters } from "vuex";
 import mavonOptions from "./markdownOption";
 import editorConfig from "./mixin";
 import { imgUrlToFile } from "../../utils/tool";
-
 // 浏览器内容区高度
 const winHeight = window.innerHeight;
 
@@ -334,7 +334,12 @@ const editorMaxHeight = winHeight - 74;
 // 编辑器的最低高度
 let editorMinHeight = 500;
 
-let selectAreaTall = 0;
+/**
+ * #BUG, 在首页存在草稿的情况下，在主题详情页中恢复用户，会变成 0 楼
+ *  -> 已解决，问题出在创建Opelist的时候，存储的是上一个typeInfo，
+ *  -> 然后通过 Object.assign 被赋值为上一次的结果
+ *  -> 通过将传进来的 params 进行深拷贝，防止数据相互篡改
+ */
 
 export default {
   name: "Editor",
@@ -394,6 +399,7 @@ export default {
       "userInfo",
       "editorType",
       "assistModalStatus",
+      "userDraft",
     ]),
     submitIconName() {
       return this.isSubmitting
@@ -407,6 +413,15 @@ export default {
     },
     params() {
       return this.currentEditorConfig.params;
+    },
+    searchUserThrottleFn() {
+      return this.debounce(this.fetchUser, 350);
+    },
+    saveDraftDebounceFn() {
+      return this.debounce(this.saveDraft, 1300);
+    },
+    gripplemoveThrottleFn() {
+      return this.throttle(this.handleGripplemove, 4, true);
     },
   },
   watch: {
@@ -436,10 +451,7 @@ export default {
                 // 先让模态框不可见，再更改 params, 要不然模态框中的信息变更会被看见影响体验
                 await this.$nextTick();
 
-                this.currentEditorConfig.clearParams.call(
-                  this.currentEditorConfig,
-                  null
-                );
+                this.currentEditorConfig.clearParams();
 
                 this.$store.commit("SET_EDITORTYPE", payload);
 
@@ -461,16 +473,6 @@ export default {
         }
       }
     },
-    currentType: {
-      handler(type) {
-        const config = this[`${type}Config`];
-
-        this.currentEditorConfig = config;
-
-        config.params = config.getInitialValue();
-      },
-      immediate: true,
-    },
     categories(value) {
       this.tagList = [
         ...new Set(value.reduce((curr, { tags }) => curr.concat(tags), [])),
@@ -491,20 +493,36 @@ export default {
 
         // 如果有草稿，则 Home 的打开编辑器的 button 应该立即修改状态
         this.$store.commit("SET_UNFINISHEDEDIT", !safeCancel);
-
         // 防止不同类型之间切换时，即使未编辑也触发保存草稿的操作
         // 可见、不整体为空、两者为同一类型( 不同表示在切换 ) 则保存
         if (this.visible && Object.is(current, pre)) {
           safeCancel
-            ? this.$api.removeDraft()
-            : this.throttle(this.saveDraft, 1500)(current, type);
+            ? (this.$api.removeDraft(),
+              this.$store.commit("SET_USERDRAFT", null))
+            : this.saveDraftDebounceFn(current, type);
         }
       },
       deep: true,
     },
-    "userInfo.user_draft": async function (draft) {
-      if (draft) {
-        const type = draft.sort;
+    currentType: {
+      handler(curr) {
+        const config = this[`${curr}Config`];
+        config.params = config.getInitialValue();
+
+        this.currentEditorConfig = config;
+      },
+      immediate: true,
+    },
+    // 来自服务端的 draft,
+    /**
+     * #BUG, 在 saveDraft 中会触发 store 中的 SET_USERDRAFT,
+     * 从而触发该 watch
+     */
+    userDraft(draft) {
+      const type = draft?.sort;
+      console.log(" userDraft watch", draft);
+      if (draft && !this.isInited) {
+        this.isInited = true;
 
         this.currentType = type;
 
@@ -514,7 +532,7 @@ export default {
         });
       }
     },
-    // 来自 reply 组件创建回复请求
+    // 来自 store.dispatch("setEditorStatus")
     editorType: async function (value) {
       if (value) {
         const { type, info } = value;
@@ -580,7 +598,7 @@ export default {
             categoryId,
             createTime,
           } = info;
-
+          // debugger;
           const fixedUsername = username || to?.username,
             fixedUserId = userId || to?.userId,
             fixedAvatar = avatar || to?.avatar,
@@ -601,7 +619,6 @@ export default {
             categoryId,
             createTime,
           };
-
           const isToUser = type === "replyToUser";
 
           isToUser && (combineInfo.floor = floor || extra?.floor);
@@ -625,10 +642,13 @@ export default {
 
         // 这里给 combineInfo deepClone以下是因为 params 会被 vue 处理为响应式对象，
         // 导致切换后的 combineInfo 信息未变更
+        // console.log(combineInfo);
         Object.assign(this.currentEditorConfig, {
           params: Object.assign(this.params, combineInfo),
           extraOpeList: this.generateOpeListItems(opeList, combineInfo),
         });
+
+        await this.$nextTick();
 
         let imgReflect = combineInfo.contentImgReflect;
 
@@ -674,30 +694,38 @@ export default {
       type: "theme",
       info: this.themeConfig.getInitialValue(),
     });
+
+    // 用户个人主页删除草稿需要及时清空
+    this.$bus.$on("set_editor_empty", () => {
+      this.currentEditorConfig.clearParams();
+    });
   },
   mounted() {
     const editSection = this.$refs.editSection;
 
     editSection.style.height = editorMinHeight + "px";
     editSection.style.maxHeight = editorMinHeight + "px";
+
+    // 用户在编辑区域 按下 ctrl + "s" 时，提示会自动保存
+    editSection.addEventListener("keyup", ({ code, ctrlKey }) => {
+      if (code === "KeyS" && ctrlKey) {
+        this.$message.info("别担心，我们会自动保存的!");
+      }
+    });
   },
   methods: {
     // ------------------------------ 编辑器的显隐和伸缩 start ----------------------------- //
     // 鼠标按下
     onGrippleMousedown() {
-      window.addEventListener("mousemove", this.mousemoveFuncWrapper);
+      window.addEventListener("mousemove", this.gripplemoveThrottleFn);
 
       window.addEventListener("mouseup", this.onGrippleMouseup);
 
       document.documentElement.classList.add("select-none");
     },
-    // 移动的中间函数，用户清除事件函数
-    mousemoveFuncWrapper(e) {
-      return this.throttle(this.handleGripplemove, 5, true)(e);
-    },
     // 移动控制函数
     handleGripplemove({ y }) {
-      const editSection = this.$refs.editSection;
+      const { editSection } = this.$refs;
 
       const currEditorHeight = winHeight - y;
 
@@ -717,7 +745,7 @@ export default {
     },
     // 鼠标抬起
     onGrippleMouseup() {
-      window.removeEventListener("mousemove", this.mousemoveFuncWrapper);
+      window.removeEventListener("mousemove", this.gripplemoveThrottleFn);
 
       window.removeEventListener("mouseup", this.onGrippleMouseup);
 
@@ -773,9 +801,7 @@ export default {
       this.isDraftSaving = true;
 
       let to = null;
-
       let extra = null;
-
       let saveRes = null;
 
       const { params } = this.currentEditorConfig;
@@ -804,22 +830,28 @@ export default {
       });
 
       const now = +new Date();
-
       const postData = {
+        fromEditor: true,
         sort,
         date: now,
         ...draftCopy,
       };
 
       saveRes = await this.$api.saveDraft(postData);
-
       if (saveRes === -1) {
+        // 将用户的 userDraft 设置为 postData，供主页使用
+        this.$store.commit("SET_USERDRAFT", postData);
+        // localStorage.setItem("user_draft", JSON.stringify(postData));
+
         setTimeout(() => {
           this.isDraftSaving = false;
         }, 600);
       }
     },
+    // #BUG
     async fetchUser(username) {
+      this.searchUsers = [];
+
       if (!username) return false;
 
       this.isFetchingUser = true;
@@ -836,9 +868,8 @@ export default {
 
       setTimeout(() => {
         this.searchUsers = searchRes || [];
-
         this.isFetchingUser = false;
-      }, 500);
+      }, 200);
     },
     // 在回复主题时，点击 title的回调
     onReplyToThemeLinkToTheme() {
@@ -911,11 +942,9 @@ export default {
       const mdRef = this.$refs.markdown;
 
       const formData = new FormData();
-
       formData.append("image", file);
 
       const { src, filename } = await this.$api.postImg(formData);
-
       mdRef.$img2Url(index, src);
 
       // 将后端转换后的文件名存储到该文件对象上
@@ -936,11 +965,9 @@ export default {
       reader.onload = () => {
         localStorage.setItem(file.name, reader.result);
       };
-
       reader.readAsDataURL(file);
 
       let imgNameList = localStorage.getItem("imgNameList");
-
       if (imgNameList && imgNameList !== "[]") {
         const opeList = JSON.parse(imgNameList);
 
@@ -970,8 +997,10 @@ export default {
     setStoreEditorType(type, params) {
       this.typeTogglePopupVisible = false;
 
-      // console.log(type, params, this[`${type}Config`].params);
-
+      /**
+       * #BUG: 这里的 params 会缓存上一次的属性，结果新值中的空值会被重新赋值
+       *  然而对于 replyToTheme, 重新赋值又是必须的, 如 title
+       */
       this.$store.dispatch("setEditorStatus", {
         type,
         info: Object.assign(this[`${type}Config`].getInitialValue(), params),
@@ -988,12 +1017,13 @@ export default {
       if (!isSameLen) return false;
 
       const isSameKeysAndValue = keyA.every((key) => {
-        return keyB.includes(key) && a[key] === b[key];
+        return a[key] === b[key];
       });
 
       return isSameKeysAndValue;
     },
     /**
+     * 生成左上角的更过操作的列表项
      * @param { [] } items
      */
     generateOpeListItems(items, params) {
@@ -1001,6 +1031,8 @@ export default {
         let opeItems = [];
 
         items.forEach((itemName) => {
+          // 防止数据相互篡改
+          const paramClone = this.deepClone(params);
           switch (itemName) {
             case "theme":
               opeItems.push({
@@ -1022,8 +1054,9 @@ export default {
                 onClick: this.setStoreEditorType.bind(
                   this,
                   "private",
-                  Object.assign(params, {
+                  Object.assign(paramClone, {
                     to: username ? [{ key: userId, label: username }] : [],
+                    title: "",
                   })
                 ),
               });
@@ -1031,12 +1064,15 @@ export default {
               return;
             case "replyToTheme":
               const { title } = params;
-
               opeItems.push({
                 type: "replyToTheme",
                 icon: "reply",
                 title: `回复主题 <strong>${title.slice(0, 5) + "..."}</strong>`,
-                onClick: this.setStoreEditorType.bind(this, itemName, params),
+                onClick: this.setStoreEditorType.bind(
+                  this,
+                  itemName,
+                  paramClone
+                ),
               });
 
               return;

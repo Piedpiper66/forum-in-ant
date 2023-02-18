@@ -18,14 +18,35 @@
     </nav>
 
     <transition name="slide-fade" mode="out-in">
-      <router-view></router-view>
+      <!-- <keep-alive> -->
+      <!-- v-show="isAlive" @toggle="onToggle" -->
+      <router-view :key="$route.params.type"></router-view>
+      <!-- </keep-alive> -->
     </transition>
   </div>
 </template>
 
 <script>
+// import Store from "../../store";
+import { Cookie } from "../../utils/tool";
+
 export default {
   name: "Message",
+  // beforeRouteEnter(to, _, next) {
+  //   // const { username: gotoUser } = to.params;
+  //   // const { isLogin } = store.state.user;
+  //   // if (!isLogin) {
+  //   //   next("/u/" + gotoUser + "/summary");
+  //   // } else {
+  //   //   next();
+  //   // }
+  //   const isLogin = !!Cookie.get("FORUM_t");
+  //   if (!isLogin) {
+  //     next(`/u/${to.params.username}/summary`);
+  //   } else {
+  //     next();
+  //   }
+  // },
   data() {
     return {
       isLoaded: true,
@@ -34,6 +55,7 @@ export default {
         { title: "接收", type: "receive" },
       ],
       currentType: "send",
+      isAlive: true,
     };
   },
   watch: {
@@ -48,6 +70,11 @@ export default {
       immediate: true,
     },
   },
-  methods: {},
+  methods: {
+    onToggle() {
+      // this.isAlive = false;
+      // this.$nextTick(() => (this.isAlive = true));
+    },
+  },
 };
 </script>

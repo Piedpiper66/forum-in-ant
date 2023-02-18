@@ -6,29 +6,17 @@
     :destroyTooltipOnHide="true"
     @click.native="onPopElClick"
   >
-    <a-badge
-      :count="$attrs.messageCount"
-      :overflow-count="$attrs.maxMessageCount"
-    >
-      <div
-        class="cursor-pointer"
-        :title="username + ($attrs['extra-title'] || '')"
-      >
-        <a-avatar
-          :size="size"
-          :src="src"
-          ref="avatar"
-          alt="无"
-          class="transform transition-all duration-300 select-none"
-          :class="{ 'shadow-lg hover:(scale-115 shadow-xl)': userId }"
-        >
-          <Icon name="user" slot="icon" />
-        </a-avatar>
-      </div>
-    </a-badge>
+    <img
+      :src="imgSrc"
+      :style="imgStyle"
+      :title="username + ($attrs['extra-title'] || '')"
+      ref="avatar"
+      alt="无"
+      class="cursor-pointer inline-block transform-gpu transition-all duration-300 select-none rounded-1/2"
+      :class="{ 'shadow-lg hover:(scale-115 shadow-xl)': !!userId }"
+    />
     <span slot="content" class="inline-flex space-x-3" style="width: 520px">
-      <!-- :info="userInfo" :loading="cardLoading" -->
-      <UserCard :show="visible" :userId="userId" />
+      <UserCard :show="visible" :userId="userId" @close="visible = false" />
     </span>
   </a-popover>
 </template>
@@ -57,7 +45,11 @@ export default {
     size: {
       // 头像大小
       type: [String, Number],
-      default: "default",
+      default: 35,
+    },
+    noSize: {
+      type: Boolean,
+      default: false,
     },
     scale: {
       type: Number,
@@ -70,9 +62,25 @@ export default {
       isAvatarClicked: false,
       hasSetListener: false,
       userInfo: null,
-      // cardLoading: true,
       cardShow: false,
     };
+  },
+  computed: {
+    imgSrc() {
+      return this.src ? this.src : require("../../assets/img/no-avatar.png");
+    },
+    imgStyle() {
+      const isNumber = this.isPureNumber(this.size);
+      const currPixel = isNumber ? `${this.size}px` : this.size;
+      return {
+        height: "auto",
+        // height: this.noSize ? "inherit" : currPixel,
+        width: currPixel,
+        // lineHeight: this.noSize ? this.size - 3 + "px" : "auto",
+        minWidth: "30px",
+        minHeight: "30px",
+      };
+    },
   },
   watch: {
     visible(status) {
@@ -115,10 +123,9 @@ export default {
           // 挂载到 options 中，避免重复查找
           // 要配合 popover 中 destroyTooltipOnHide="true"，否则会出现多个 .ant-popover 元素
           // prettier-ignore
-          this.$options.container = document.getElementsByClassName("ant-popover")[0];
+          this.$options.container = window.document.getElementsByClassName("ant-popover")[0];
         });
       }
-
       this.visible = true;
     },
     /**
@@ -126,20 +133,24 @@ export default {
      */
     handleClick(e) {
       const target = e.target;
+      const avatarEl = this.$refs.avatar;
 
-      const avatarEl = this.$refs.avatar.$el;
-
-      const isAvatar = target.parentElement === avatarEl || target === avatarEl;
+      const isLink = target.dataset.link !== void 0;
 
       // 如果点击的是头像则忽略，组件自身会处理，否则会出现闪烁
-      if (isAvatar) {
+      if (target === avatarEl) {
         return false;
       }
 
       const result = isNodeInParent(target, this.$options.container);
 
-      // 如果点击的不是卡片内部，则关闭卡片
-      if (!result) this.visible = false;
+      // 如果点击的不是卡片内部或者点击的是卡片中的头像和用户名，则关闭卡片
+      if (!result || isLink) this.visible = false;
+
+      console.log(this.visible);
+    },
+    isPureNumber(number) {
+      return parseInt(number) === number;
     },
   },
 };

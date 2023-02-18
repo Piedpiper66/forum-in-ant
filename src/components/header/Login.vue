@@ -7,7 +7,7 @@
     :keyboard="false"
     :maskClosable="false"
     :dialogStyle="{
-      top: '20vh',
+      top: '15vh',
       minWidth: '430px',
     }"
   >
@@ -25,7 +25,9 @@
         <a-input
           v-decorator="[
             'userIdentity',
-            { rules: [{ required: true, message: '请输入您的账号!' }] },
+            {
+              rules: [{ required: true, message: '请输入您的账号!' }],
+            },
           ]"
           placeholder="邮箱或用户名"
         />
@@ -35,7 +37,9 @@
           type="password"
           v-decorator="[
             'password',
-            { rules: [{ required: true, message: '请输入密码!' }] },
+            {
+              rules: [{ required: true, message: '请输入密码!' }],
+            },
           ]"
           @pressEnter="handleLogin"
         />
@@ -68,6 +72,8 @@
 </template>
 
 <script>
+import { Modal } from "ant-design-vue";
+
 export default {
   name: "Login",
   props: {
@@ -92,7 +98,9 @@ export default {
       this.visible = status;
     },
   },
-  created() {},
+  created() {
+    this.$bus.$on("closeLogin", () => this.handleCancel());
+  },
   methods: {
     handleLogin(e) {
       e.preventDefault();
@@ -104,15 +112,15 @@ export default {
           const { message } = await this.$store.dispatch("login", values);
 
           setTimeout(() => {
-            this.isLoging = false;
-
             if (message) {
               this.$message.error(message);
-
               return false;
+            } else {
+              this.form.resetFields();
+              this.handleOk();
             }
 
-            this.visible = false;
+            this.isLoging = false;
           }, 100);
         }
       });

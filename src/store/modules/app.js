@@ -11,6 +11,8 @@ const state = {
   editorType: null,
   // 在打开编辑器之前用于提示用于还未完成的编辑
   assistModalStatus: null,
+  // 用于存放取消请求的队列
+  cancelRequestQuene: [],
 };
 
 const mutations = {
@@ -28,6 +30,13 @@ const mutations = {
   },
   SET_SHOWASSISTMODAL(state, status) {
     state.assistModalStatus = status;
+  },
+  ADD_CANCELREQUEST(state, cancelFn) {
+    cancelFn && state.cancelRequestQuene.push(cancelFn);
+  },
+  FLUSH_CANCELQUENE(state) {
+    state.cancelRequestQuene.forEach((c) => c());
+    state.cancelRequestQuene = [];
   },
 };
 

@@ -1,3 +1,5 @@
+@primary-color: #26d362;
+
 /* 重置 antdv a 标签的默认主色 */
 .reset-link a {
   color: inherit;
@@ -19,23 +21,30 @@
   box-shadow: 0 0px 20px fade(#000, 15%);
 }
 
+.ant-btn-loading:nth-child(1) {
+  margin-right: .5rem;
+}
+
 .ant-message {
   z-index: 2500;
-  &-info {
-    display: flex;
-    align-items: center;
-  }
-  &-success {
-    display: flex;
-    align-items: center;
-  }
-  &-warning {
-    display: flex;
-    align-items: center;
-  }
-  &-error {
-    display: flex;
-    align-items: center;
+  // &-info {
+  //   display: flex;
+  //   align-items: center;
+  // }
+  // &-success {
+  //   display: flex;
+  //   align-items: center;
+  // }
+  // &-warning {
+  //   display: flex;
+  //   align-items: center;
+  // }
+  // &-error {
+  //   display: flex;
+  //   align-items: center;
+  // }
+  .ant-message-notice span {
+    vertical-align: middle;
   }
 }
 
@@ -121,4 +130,8 @@
   font-size: 1.25rem;
   color: rgb(107, 114, 128);
   letter-spacing: 0.05rem;
+}
+
+.ant-popover-arrow {
+  display: none;
 }

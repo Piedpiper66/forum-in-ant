@@ -1,5 +1,5 @@
 <template>
-  <transition name="slide-fade" mode="out-in" tag="div">
+  <transition name="slide-fade" mode="out-in" tag="div" v-if="userInfo">
     <div
       class="user_account w-full space-y-5"
       v-if="currView === 'account'"
@@ -145,7 +145,7 @@
       </a-modal>
 
       <!-- 使用的设备 -->
-      <section>
+      <section ref="devices" class="dev">
         <h2>最近使用的设备</h2>
         <ul class="space-y-5 mt-3">
           <li
@@ -155,7 +155,7 @@
           >
             <div class="flex items-center space-x-3">
               <Icon
-                name="windows"
+                :name="getBrowserIconName(device.browser)"
                 width="2.5rem"
                 height="2.5rem"
                 className="text-cool-gray-500"
@@ -176,9 +176,22 @@
                 </span>
               </span>
             </div>
-            <div class="text-green-400 cursor-pointer" title="退出该设备">
-              <Icon name="logout" size="1rem" />
-            </div>
+            <!-- 非当前设备 -->
+            <!--  :getPopupContainer="() => $refs.endLine" -->
+            <a-popconfirm
+              v-if="devId !== device.id"
+              title="确定删除该设备 ?"
+              placement="rightBottom"
+              cancelText="再想想"
+              okText="确定"
+              :getPopupContainer="() => $refs.devices"
+              @confirm="onRemoveDevice(device.id)"
+            >
+              <div class="text-green-400 cursor-pointer" title="退出该设备">
+                <Icon name="logout" size="1rem" :data-dev="device.id" />
+              </div>
+            </a-popconfirm>
+            <div v-else class="text-gray-500 font-bold">当前设备</div>
           </li>
         </ul>
       </section>
@@ -295,28 +308,15 @@
 
 <script>
 import { mapGetters } from "vuex";
-import store from "../../store";
 import { aesEncrypt } from "../../utils/tool";
 import { Modal } from "ant-design-vue";
 
 export default {
   name: "Account",
   inject: ["appReload"],
-  beforeRouteEnter(to, _, next) {
-    const { username: gotoUser } = to.params;
-
-    const { isLogin, username: loginUser } = store.getters;
-
-    if (!isLogin || loginUser !== gotoUser) {
-      next("/u/" + gotoUser);
-    } else {
-      next();
-    }
-  },
   data() {
     return {
       switchCounter: 0,
-      userInfo: null,
       currUserAvatar: "",
       uploadErrorTip: "",
       // 这 a-upload 不行,
@@ -353,9 +353,7 @@ export default {
     };
   },
   computed: {
-    ...mapGetters({
-      storeUserInfo: "userInfo",
-    }),
+    ...mapGetters(["userInfo", "devId", "isLogin"]),
     originMail() {
       return this.userInfo.email;
     },
@@ -376,30 +374,27 @@ export default {
     },
   },
   watch: {
-    currView(curr, last) {
-      // this.switchCounter++;
-      if (curr === "newMail") {
-        this.$nextTick(() => {
-          setTimeout(() => {
-            console.log(this.$refs.resetMail);
-          });
-        });
-      }
-    },
-    storeUserInfo: {
+    userInfo: {
       handler(info) {
         if (info) {
-          this.userInfo = info;
+          this.currUserAvatar = info.avatar;
+          this.profile.fullname = info.fullname;
         }
       },
       immediate: true,
     },
+    // currView(curr, last) {
+    //   // this.switchCounter++;
+    //   if (curr === "newMail") {
+    //     this.$nextTick(() => {
+    //       setTimeout(() => {
+    //         console.log(this.$refs.resetMail);
+    //       });
+    //     });
+    //   }
+    // },
   },
   created() {
-    this.currUserAvatar = this.userInfo.avatar;
-
-    this.profile.fullname = this.userInfo.fullname;
-
     window.addEventListener("storage", async ({ key, newValue }) => {
       console.log(key, newValue);
       // 新开窗口重设密码，新窗口在完成重设密码后，通知当前窗口让该用户重新登陆
@@ -516,6 +511,7 @@ export default {
         this.$message.error(message);
       }
     },
+    // 发送邮箱重置密码
     handleResetMail() {
       this.alterEmailForm.validateFields(
         async (error, { newEmail, captcha }) => {
@@ -582,6 +578,7 @@ export default {
         callback();
       }
     },
+    // 重置密码
     onResetPwd() {
       this.resetPwdForm.validateFields(async (err, { password }) => {
         if (!err) {
@@ -611,6 +608,42 @@ export default {
         }
       });
     },
+    getBrowserIconName(browser) {
+      const lowercaseName = ("" + browser).toLowerCase();
+
+      return lowercaseName.includes("chrome")
+        ? "chrome"
+        : lowercaseName.includes("edge")
+        ? "edge"
+        : lowercaseName.includes("safari")
+        ? "safari"
+        : lowercaseName.includes("firefox")
+        ? "firefox"
+        : "unknown";
+    },
+    /**
+     * @param { Event } target
+     */
+    async onRemoveDevice(devId) {
+      // if (["use", "svg"].includes(target.tagName)) {
+      //   target = target.tagName === "use" ? target.parentElement : target;
+      //   const { icon, dev: devId } = target.dataset;
+
+      // if (icon === "logout") {
+      const result = await this.$api.removeUserDevice(devId);
+
+      if (result) {
+        this.$message.success("已删除该设备!");
+        this.userInfo.userLoginDevices = this.userInfo.userLoginDevices.filter(
+          (dev) => dev.id !== devId
+        );
+      } else {
+        this.$message.error("设备删除失败");
+      }
+      // }
+      // }
+    },
+    // 删除账户
     onRemoveAccount() {
       // this.removeModalVisible = true;
       let countdown = 3;
@@ -724,6 +757,10 @@ section {
 .basic-btn {
   @apply px-2 py-1 rounded-sm flex items-center space-x-1
         transition-colors duration-300 cursor-pointer;
+}
+
+.dev >>> .ant-popover-inner-content {
+  padding: 0.5rem 1rem;
 }
 </style>
 <style lang="postcss">

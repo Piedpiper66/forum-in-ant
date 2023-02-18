@@ -5,7 +5,12 @@
       <!-- 充当头像的占位符 -->
       <div class="empty-avatar w-11 mr-3"></div>
       <div class="flex flex-col flex-1">
-        <transition name="fadeInOut" mode="out-in">
+        <transition
+          name="fadeInOut"
+          mode="out-in"
+          @after-leave="afterRefLeave"
+          ref="refreply"
+        >
           <RefReply
             v-if="isRefVisible"
             :refDetail="refDetail"
@@ -18,8 +23,8 @@
     <!-- 主内容 -->
     <div
       class="flex w-full"
-      @mouseenter="showResolve && (resolveIconShow = true)"
-      @mouseleave="showResolve && (resolveIconShow = false)"
+      @mouseenter="showResolve && (hoverReplyShowResolve = true)"
+      @mouseleave="showResolve && (hoverReplyShowResolve = false)"
     >
       <!-- 左头像 -->
       <div class="px-3">
@@ -27,7 +32,7 @@
           :src="reply.avatar"
           :username="reply.username"
           :userId="reply.userId"
-          size="large"
+          :size="45"
         />
       </div>
 
@@ -60,7 +65,7 @@
             />
             <!-- 引用回复的用户头像 -->
             <Avatar
-              size="small"
+              :size="30"
               :src="reply.to.avatar"
               :skip="true"
               username="加载该回复信息"
@@ -85,21 +90,22 @@
           ></div>
         </div>
 
-        <!-- 正文  reply-content 类名作为渲染后的元素定位点 -->
+        <!-- 正文  markdown 类名作为渲染后的元素定位点 -->
         <section
           ref="content"
           v-html="reply.markdown || reply.content"
-          class="reply-content my-5 select-text text-base"
+          class="md-content my-5 select-text text-base"
         ></section>
 
         <!-- 交互区 -->
         <div class="flex justify-end space-x-1 items-center">
-          <!-- 设置解决方案 -->
+          <!-- 设置解决方案  BUG: 不是用于的帖子可以取消该贴为解决方案 -->
           <transition name="fadeInOut">
             <!-- 在该主题无解决方案且鼠标移入该回复时显示该元素 -->
             <span
               class="icon-box mr-2 space-x-2"
-              v-show="resolveIconShow || reply.isSolution"
+              v-if="showResolve"
+              v-show="canResolveIconToggle"
               :title="
                 reply.isSolution ? '该回复为解决方案' : '设置该贴为解决方案'
               "
@@ -110,12 +116,12 @@
                     : 'text-green-300 cursor-default'
                   : 'cursor-pointer hover:(bg-green-300 text-white)',
               ]"
-              @click="toggleTopicResolved"
+              @click="toggleThemeResolved"
             >
-              <Icon name="correct" size="1.5rem" />
+              <Icon name="correct" />
               <span
                 v-show="reply.isSolution"
-                class="font-semibold text-green-400 text-base"
+                class="font-semibold text-green-400 text-[15px]"
               >
                 解决方案
               </span>
@@ -130,11 +136,14 @@
                 ? 'hover:(bg-gray-200)'
                 : 'hover:(bg-red-200 text-red-600)',
             ]"
-            @click="handleSupport"
+            @click="onSupport"
             :title="reply.isSupport ? '取消点赞' : '点赞该帖'"
           >
             <span v-if="reply.supportLen > 0">{{ reply.supportLen }}</span>
-            <Icon :name="reply.isSupport ? 'like-filled' : 'like-outline'" />
+            <Icon
+              :name="reply.isSupport ? 'like-filled' : 'like-outline'"
+              :class="reply.isSupport ? 'text-red-400' : 'text-gray-400'"
+            />
           </span>
 
           <!-- 链接 -->
@@ -143,39 +152,42 @@
             :width="300"
             trigger="click"
             v-model="canlinkShow"
-            @after-enter="handleLinkSelect"
+            @visibleChange="handleLinkPopoverVisible"
           >
             <span
-              class="flex items-center space-x-2 link-copy icon-box hover:(bg-gray-300 text-white) text-gray-400"
+              class="flex items-center space-x-2 link-copy icon-box hover:(bg-gray-200) text-gray-400"
             >
               <Icon name="link" className="font-bold" size="1.45rem" />
             </span>
 
-            <div class="flex flex-col" slot="content">
+            <div class="flex flex-col p-2 space-y-2" slot="content">
               <span class="text-gray-800 font-bold">
                 <b>{{ reply.isCreator ? "主题" : "帖子" }}</b>
-                #{{ reply.posi }}</span
-              >
+                #{{ reply.posi }}
+              </span>
+
               <a-input
-                size="small"
-                :value="getHref()"
-                class="border-none my-2"
-                style="fontsize: 15px"
+                :value="`${href}${reply.isCreator ? '' : `?rId=${reply._id}`}`"
+                ref="linkIpt"
               ></a-input>
+
               <div class="flex justify-between text-lg items-center">
                 <a
-                  class="bg-green-400 px-2 text-white rounded-md inline-block"
+                  class="table bg-green-400 px-2 py-1 !text-white rounded-md hover:(bg-green-500)"
                   @click.prevent="MailTo"
                   title="通过电子邮件发送"
-                  :href="getHref()"
+                  :href="href"
                 >
-                  <i class="el-icon-message font-bold"></i>
+                  <Icon name="mail" class="table-cell align-middle" />
                 </a>
                 <span
-                  class="hover:text-black cursor-pointer"
+                  class="cursor-pointer"
                   @click="() => (canlinkShow = false)"
                 >
-                  <i class="el-icon-close font-extrabold"></i>
+                  <Icon
+                    name="close"
+                    class="text-gray-400 hover:text-gray-600"
+                  />
                 </span>
               </div>
             </div>
@@ -185,7 +197,7 @@
           <span
             class="icon-box hover:(bg-gray-200 text-yellow-300)"
             :title="reply.isBookmark ? '取消收藏' : '收藏该贴'"
-            @click="toggleBookmark"
+            @click="onBookmark"
           >
             <Icon
               :name="reply.isBookmark ? 'bookmark' : 'bookmark-line'"
@@ -198,9 +210,8 @@
 
           <!-- 回复 -->
           <span
-            v-if="isLogin"
             class="icon-box text-gray-500 hover:(bg-gray-200 text-gray-700) space-x-1 select-none"
-            @click="createReply"
+            @click="invokeEditorWithReply"
             title="回复该贴"
           >
             <Icon name="reply" />
@@ -225,6 +236,7 @@ export default {
   components: {
     RefReply,
   },
+  inject: ["href", "freshOffsets"],
   props: {
     reply: {
       type: Object,
@@ -238,10 +250,17 @@ export default {
   },
   data() {
     return {
+      // 控制 link popover 的显隐
       canlinkShow: false,
       timer: null,
-      isSupport: false,
-      resolveIconShow: false,
+      // 是否已经点击点赞
+      isToggleSupport: true,
+      // 是否已经点击收藏
+      isToggleBookmark: true,
+      // 用于控制鼠标悬停和离开 reply 时 resolveIcon 的显隐
+      hoverReplyShowResolve: false,
+      // 是否已经转换了 reoslveIcon 状态
+      isToggleResolve: true,
       // 引用回复加载
       isRefLoading: false,
       // 加载后的引用是否可见
@@ -253,16 +272,30 @@ export default {
     };
   },
   computed: {
+    ...mapGetters(["isLogin", "editorShow", "editorType", "userId"]),
+    // 用于标记是主题还是回复
+    isTheme() {
+      return this.reply.isCreator;
+    },
+    isLiked() {
+      return this.reply.isSupport;
+    },
+    isBkMk() {
+      return this.reply.isBookmark;
+    },
+    isSolution() {
+      return this.reply.isSolution;
+    },
     currentRefIcon() {
       return this.isRefLoading ? "loading" : "reply";
     },
-    ...mapGetters(["isLogin", "editorShow", "editorType", "userId"]),
+    clickIconThrottleFn() {
+      return this.throttle(this.onPasteNodeClick, 800, true, this);
+    },
+    canResolveIconToggle() {
+      return this.hoverReplyShowResolve || this.isSolution;
+    },
   },
-  // watch: {
-  //   editorShow(status) {
-  //     this.isEditorVisible = status;
-  //   },
-  // },
   mounted() {
     const content = this.$refs.content.querySelectorAll("pre");
 
@@ -284,14 +317,16 @@ export default {
   },
   methods: {
     onMouseEnterPre({ target: { pasteNode } }) {
-      pasteNode.classList.add("opacity-100");
+      pasteNode.classList.remove("opacity-0");
+      pasteNode.classList.add("icon-paste");
+      pasteNode.textContent = "";
     },
     onMouseLeavePre({ target: { pasteNode } }) {
-      pasteNode.classList.remove("opacity-100");
+      pasteNode.classList.add("opacity-0");
     },
     // 复制 pre 节点中的内容
-    onPasteNodeClick({ target: { parentElement } }) {
-      const pasteContent = parentElement.innerText;
+    onPasteNodeClick({ target }) {
+      const pasteContent = target.parentElement.innerText;
 
       /**
        * document.execCommand 方法只能复制 input 或 textarea 等节点中的内容
@@ -317,31 +352,32 @@ export default {
 
       document.body.removeChild(textarea);
 
-      copyResult && this.$message.success("代码复制成功");
+      if (copyResult) {
+        target.classList.remove("icon-paste");
+        target.textContent = "✔ 已复制";
+      }
     },
     // 创建复制图标并置于 pre 节点的右上角
     generatePasteIcon() {
-      const i = document.createElement("i");
+      const pasteNode = document.createElement("span");
 
-      Object.assign(i.style, {
+      Object.assign(pasteNode.style, {
         position: "absolute",
         right: "1rem",
         top: ".5rem",
       });
 
-      i.title = "点击复制代码";
+      pasteNode.title = "点击复制代码";
 
       // prettier-ignore
-      i.className =
+      pasteNode.className =
         `iconfont icon-paste text-gray-400 cursor-pointer
         transition-opacity duration-300 opacity-0`;
 
       // 防抖，防止快速点击导致的内存资源消耗
-      i.onclick = (e) => {
-        return this.throttle(this.onPasteNodeClick, 800, true, this)(e);
-      };
+      pasteNode.onclick = this.clickIconThrottleFn;
 
-      return i;
+      return pasteNode;
     },
     async onClickReference() {
       if (!this.isRefLoading) {
@@ -363,46 +399,105 @@ export default {
             !ref && this.$message.error("服务器出了些小问题, 请重试");
 
             this.isRefLoading = false;
+
+            this.$nextTick(() => {
+              this.freshOffsets();
+            });
           }, 500);
         }
       }
     },
-
+    afterRefLeave() {
+      this.$nextTick(() => {
+        this.freshOffsets();
+      });
+    },
     // ----------------------------- 交互按钮功能 ------------------------- //
     // 点赞
-    handleSupport() {
-      console.log("support!");
+    async onSupport() {
+      if (!this.isLogin) {
+        this.$message.info("请先登录");
+        return;
+      }
+
+      if (!this.isToggleSupport) return;
+
+      this.isToggleSupport = false;
+
+      const result = await this.$api.toggleSupport({
+        ope: +!this.isLiked, // false => 1, true => 0
+        theme: this.isTheme,
+        to: this.reply.reply_user,
+        id: this.reply._id,
+      });
+
+      if (result && result.status === "success") {
+        this.$emit("toggleSupport");
+      } else {
+        this.$message.error("出了点小问题，请稍后再试");
+      }
+
+      this.isToggleSupport = true;
     },
     // 链接
-    handleLinkSelect() {
-      console.log("select");
+    handleLinkPopoverVisible(status) {
+      // linkIpt 可能还没渲染出来
+      this.$nextTick(() => {
+        const iptRef = this.$refs.linkIpt.$el;
+        if (status) {
+          iptRef.select();
+        } else {
+          iptRef.blur();
+        }
+      });
     },
-    getHref() {
-      return location.href;
-    },
-    async MailTo() {
-      const theme = this.reply.topicTitle;
-      const content = location.href;
-      window.open("mailto:?subject=[Rao Forum]" + theme + "&body=" + content);
+    // 打开系统的邮箱 app
+    MailTo() {
+      window.open(
+        "mailto:?subject=[Rao Forum]" +
+          this.reply.themeTitle +
+          "&body=" +
+          encodeURIComponent(this.href)
+      );
     },
     // 收藏
-    toggleBookmark() {
-      console.log("toggle mark!");
-      this.reply.isBookmark = !this.reply.isBookmark;
+    async onBookmark() {
+      if (!this.isLogin) {
+        this.$message.info("请先登录");
+        return;
+      }
+
+      if (!this.isToggleBookmark) return;
+
+      this.isToggleBookmark = false;
+
+      const result = await this.$api.toggleBookmark({
+        ope: +!this.isBkMk, // false => 1, true => 0
+        theme: this.isTheme,
+        to: this.reply.reply_user,
+        id: this.reply._id,
+        date: Date.now(),
+      });
+
+      if (result && result.status === "success") {
+        this.$emit("toggleBookmark");
+      } else {
+        this.$message.error("出了点小问题，请稍后再试");
+      }
+
+      this.isToggleBookmark = true;
     },
     // 回复主题或用户
-    createReply() {
+    invokeEditorWithReply() {
+      if (!this.isLogin) {
+        this.$message.info("请先登录");
+        return;
+      }
+
+      // prettier-ignore
       const {
-        isCreator,
-        themeTitle: title,
-        topicId: themeId,
-        userId,
-        avatar,
-        username,
-        _id: prepareGotoReplyId,
-        posi,
-        categoryId,
-        createTime,
+        isCreator, themeTitle: title, topicId: themeId, _id: prepareGotoReplyId,
+        userId, avatar, username, posi, categoryId,createTime,
       } = this.reply;
 
       if (!username) {
@@ -424,7 +519,7 @@ export default {
       }
 
       // prettier-ignore
-      const info = { 
+      const info = {
         title, themeId, _id: prepareGotoReplyId, markdown: "", content: "",
         userId, avatar, username, categoryId, createTime
       };
@@ -437,31 +532,33 @@ export default {
         info,
       });
     },
-    async toggleTopicResolved() {
-      const canToggle = this.isLogin && this.userId === this.reply.creatorId;
-      // console.log(this.userId, this.reply.creatorId, canToggle);
-      if (!canToggle) return;
-      const type = this.isSolution ? "remove" : "add";
-      const { topicId, _id, username, reply_user, avatar } = this.reply;
-      const {
-        data: { code, data, message },
-      } = await this.$api.setResolve({
-        topicId,
-        username,
-        userId: reply_user,
-        avatar,
-        replyId: _id,
-        type,
-      });
-      // log("resolve res", [code, data, message]);
-      if (code === 200 && data.ok && data.nModified) {
-        // log(data);
-        this.$bus.$emit("toggleTopicResolved", {
-          replyId: _id,
-          username,
-          userId: reply_user,
-          avatar,
+    // 设置或取消当前回复为解决方案
+    async toggleThemeResolved() {
+      if (this.canResolveIconToggle && this.isToggleResolve) {
+        this.isToggleResolve = false;
+
+        const { topicId, _id, username, reply_user, avatar } = this.reply;
+        // prettier-ignore
+        const data = await this.$api.toggleThemeResolve({
+          type: +!this.isSolution, // false => 1, true: 0
+          topicId, replyId: _id,
+          userId: reply_user, username, avatar,
         });
+
+        if (data && data.status === "success") {
+          const message = this.isSolution ? "已取消" : "设置成功";
+          this.$message.success(message);
+
+          if (this.isSolution) {
+            this.hoverReplyShowResolve = true;
+          }
+
+          this.$emit("toggleResolved");
+        } else {
+          this.$message.error("设置失败");
+        }
+
+        this.isToggleResolve = true;
       }
     },
   },

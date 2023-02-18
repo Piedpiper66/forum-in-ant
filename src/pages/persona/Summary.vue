@@ -93,7 +93,7 @@
                     :username="item.username"
                     :userId="item.userId"
                     :src="item.avatar"
-                    size="large"
+                    :size="45"
                     class="mr-5"
                   />
                   <div>

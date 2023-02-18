@@ -42,6 +42,11 @@
           <router-link to="/"></router-link>
           <router-link to="/"></router-link>
         </div>
+        <a-empty
+          description="暂无数据"
+          v-show="!categoryOverview.length"
+          :imageStyle="{ marginTop: '2rem', height: '15rem' }"
+        />
       </a-col>
 
       <!-- 最新讯息列 -->
@@ -104,9 +109,8 @@
                   '最后评论于: ' +
                   timeParser(item.lastActivity)
                 "
-              >
-                {{ format(item.createDate) }}
-              </div>
+                v-date.CN.live.suffix="item.createDate"
+              ></div>
             </div>
           </li>
         </ul>
@@ -116,14 +120,20 @@
                 transition-colors duration-400 bg-gray-200 cursor-pointer font-semibold
                 text-gray-700 hover:(bg-gray-400 text-white) tracking-widest" 
           to="/type/latest"
+          v-show="topicLatest.length === this.maxLatestTopics"
         >更多</router-link>
+        <a-empty
+          description="暂无数据"
+          v-show="!topicLatest.length"
+          :imageStyle="{ marginTop: '2rem', height: '15rem' }"
+        />
       </a-col>
     </a-row>
   </transition>
 </template>
 
 <script>
-import { timeFormat, timeParser } from "../../utils/format";
+import { timeParser } from "../../utils/format";
 
 export default {
   name: "Overveiw",
@@ -133,10 +143,10 @@ export default {
       categoryOverview: [],
       topicLatest: [],
       isLoaded: false,
+      maxLatestTopics: 20,
     };
   },
   computed: {
-    format: () => (time) => timeFormat(time),
     timeParser: () => (time) => timeParser(time),
   },
   created() {
@@ -144,27 +154,31 @@ export default {
   },
   methods: {
     async getOverviewData() {
+      const [categories, topics] = await Promise.all([
+        this.$api.getCategories(),
+        this.$api.getLatestTopics({
+          skip: 0,
+          limit: this.maxLatestTopics,
+        }),
+      ]);
+      this.$store.commit("SET_CATEGORY", categories || []);
+
       // 左侧类目总览
-      const categories = await this.$api.getCategories();
       this.categoryOverview = categories || [];
 
       // 右侧 20 条最新发表的文章
-      const latestTopics = await this.$api.getLatestTopics({
-        skip: 0,
-        limit: 20,
-      });
 
       // 用户信息项存在于数组中，将其打散置于顶层
-      latestTopics &&
-        latestTopics.forEach((item) => {
-          const info = item.creator[0];
-          info && Object.assign(item, info);
-          delete item.creator;
-        });
+      // prettier-ignore
+      topics && topics.forEach((item) => {
+        const info = item.creator[0];
+        info && Object.assign(item, info);
+        delete item.creator;
+      });
 
-      this.deepFreeze(latestTopics);
+      this.deepFreeze(topics);
 
-      this.topicLatest = latestTopics || [];
+      this.topicLatest = topics || [];
 
       setTimeout(() => {
         this.$emit("callForDisplay");

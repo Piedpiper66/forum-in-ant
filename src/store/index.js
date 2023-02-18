@@ -23,9 +23,6 @@ const modules = modulesFiles.keys().reduce(
 const store = new Vuex.Store({
   modules,
   getters,
-  actions: {
-    getSome({ commit, dispatch, state, rootState, rootGetters }, payload) {},
-  },
 });
 
 export default store;

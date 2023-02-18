@@ -50,6 +50,8 @@
 </template>
 
 <script>
+import Icon from "./SvgIcon.vue";
+
 let imgClassList = null;
 
 let imgEl = null;
@@ -60,6 +62,7 @@ export default {
     src: String,
     show: Boolean,
   },
+  components: { Icon },
   data() {
     return {
       visible: false,
@@ -104,7 +107,7 @@ export default {
           this.currentZoom += 0.2;
           break;
         case "zoomOut":
-          // BUG, 0.200000...1 - 0.2 失去精度成为极小的负数
+          // , 0.200000...1 - 0.2 失去精度成为极小的负数
           const nextZoom = (this.currentZoom * 10 - 2) / 10;
 
           this.currentZoom = nextZoom < 0 ? 0 : nextZoom;
@@ -117,6 +120,7 @@ export default {
         case "scale-to-original":
           this.currentScaleIcon = "fullscreen";
           this.currentZoom = 1;
+          this.currentDeg = 0;
           this.initMargin();
           break;
         case "rotate-ck":

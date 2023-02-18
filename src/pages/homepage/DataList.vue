@@ -1,19 +1,19 @@
 <template>
   <!-- 最新 | 近期 | 热门 -->
   <transition name="slide-fade" mode="out-in">
-    <div class="table w-full" v-if="isLoaded">
+    <div class="table w-full mb-5" v-if="isLoaded">
       <table class="mt-5 w-full text-gray-500 sort-view">
         <thead>
           <tr class="border-b-3">
             <th class="py-3 px-1 text-left cursor-default">主题</th>
             <th class="w-8 md:w-40 avatar"></th>
-            <th class="w-13 md:w-16">回复</th>
-            <th class="hidden-xs-only w-16">浏览</th>
+            <th class="w-13 md:w-16 whitespace-nowrap">回复</th>
+            <th class="hidden-xs-only w-16 whitespace-nowrap">浏览</th>
             <th class="whitespace-nowrap">活动</th>
           </tr>
         </thead>
         <tbody class="w-full">
-          <template v-if="tableData && tableData.length > 0">
+          <template v-if="tableData.length > 0">
             <tr
               v-for="(item, index) in tableData"
               :key="index"
@@ -60,7 +60,7 @@
 
               <!-- 文章评论用户 -->
               <td
-                class="avatar-box h-7 w-8 align-middle space-x-2"
+                class="avatar-box h-7 align-middle whitespace-nowrap space-x-1"
                 v-if="avatar"
               >
                 <Avatar
@@ -77,6 +77,10 @@
                       : ''
                   "
                   class="w-1/5"
+                  :class="[
+                    index == 0 ? 'inline-block' : 'hidden md:inline-block',
+                  ]"
+                  :noSize="true"
                 />
               </td>
 
@@ -101,30 +105,48 @@
             </tr>
           </template>
           <template v-else></template>
-          <div
+          <!-- <div
             v-show="!isLoaded && tableData.length === 0"
             class="w-full text-center text-gray-400 py-3 relative left-1/2"
           >
             暂无更多数据
-          </div>
+          </div> -->
         </tbody>
       </table>
       <a-empty
         description="暂无数据"
-        v-show="isShowEmpty"
+        v-show="isSearched && !tableData.length"
         :imageStyle="{ marginTop: '2rem', height: '15rem' }"
       />
-      <Loading :show="!isLoaded" />
+
+      <transition-group name="fadeInOut" mode="out-in">
+        <DataLoading
+          v-show="isFetching"
+          :show="isFetching"
+          key="loading"
+          class="mt-3"
+        />
+
+        <a-divider
+          v-show="tableData.length > 0 && noMoreData"
+          class="!px-10 !mt-10"
+          key="noMore"
+        >
+          <span class="text-gray-400 text-sm">没有更多了哦~</span>
+        </a-divider>
+      </transition-group>
     </div>
   </transition>
 </template>
 
 <script>
-import { countToK, timeFormat, timeParser } from "../../utils/format";
+import { timeParser } from "../../utils/format";
+import Scroll from "../../mixins/scroll";
 
 export default {
   name: "DataList",
   inject: ["homeReload"],
+  mixins: [Scroll],
   props: {
     avatar: {
       type: Boolean,
@@ -138,75 +160,74 @@ export default {
   },
   data() {
     return {
-      tableData: null,
-      isHomeComplete: false, // Home 中的 categoryList 是否加载完毕
+      tableData: [],
       isLoaded: false,
       page: 1,
-      pageSize: 8,
+      pageSize: 15,
       errorInvoke: false,
+      isSearched: false,
       isShowEmpty: false,
+      query: null,
     };
   },
   computed: {
-    converCate() {
-      return (item) => {
-        return Array.isArray(item) ? item : [item];
-      };
-    },
     categoryList() {
-      return this.$parent.$data.categoryList;
+      return this.$store.getters.categories;
     },
   },
   watch: {
-    "$parent.$data.categoryList": {
-      async handler(current) {
-        // 当 Home 组件中的 categoryList 已加载完毕后, 获取 categoryId
-        if (current && current.length > 0) {
-          this.isHomeComplete = true;
-          // 此处相当于首次加载触发获取数据
-          const query = this.generateQuery(current);
+    $route: {
+      handler() {
+        this.homeReload();
 
-          this.tableData = await this.fetchTableData(query);
-        }
+        this.$options.getList = async () => {
+          await this.fetchTableData();
+        };
       },
-      immediate: true,
-    },
-    $route() {
-      this.homeReload();
-    },
-  },
-  filters: {
-    transformViews: (views) => countToK(views),
-    convertURL: (title) => convertURL(title),
-    transformActivity: (time) => timeFormat(time),
-    getLatestReply(item) {
-      const { replies, createDate } = item;
-      if (!replies || replies.length <= 1) return createDate;
-      const dateList = replies.slice(1).map((item) => item.createTime);
-      return Math.max(...dateList);
+      immediate: false,
     },
   },
   created() {
     this.showUp();
   },
+  async mounted() {
+    this.$options.getList = async () => {
+      await this.fetchTableData();
+    };
+
+    this.query = this.generateQuery(this.categoryList);
+
+    await this.fetchTableData();
+  },
   methods: {
-    async fetchTableData(query) {
+    async fetchTableData() {
       try {
         this.errorInvoke = false;
 
-        const topics = await this.$api.getLatestTopics(query);
+        const topics = await this.$api.getLatestTopics(
+          Object.assign(this.query, {
+            limit: this.pageSize,
+            skip: (this.page++ - 1) * this.pageSize,
+          })
+        );
+
+        this.isSearched = true;
 
         if (topics && topics.length > 0) {
           topics.forEach((item) => {
             item.replies.unshift(item.creator[0] || {});
           });
 
-          this.page++;
+          // this.page++;
+
+          this.tableData = this.tableData.concat(topics);
 
           return Object.freeze(topics);
         } else {
           // this.errorInvoke = true;
           this.isShowEmpty = true;
+
+          this.noMoreData = true;
           return [];
         }
       } catch (error) {
@@ -226,10 +247,7 @@ export default {
        */
       const { category, tagname, type } = this.$route.params;
 
-      const query = {
-        limit: this.pageSize,
-        skip: (this.page - 1) * this.pageSize,
-      };
+      const query = {};
 
       category &&
         (query["categoryId"] = this.getCategoryIdByAlias(cateList, category));

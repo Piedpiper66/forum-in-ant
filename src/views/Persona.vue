@@ -90,7 +90,7 @@
       <!-- 文字导航 -->
       <ul @click="onSwitchRoute" class="overflow-hidden space-x-5">
         <li
-          v-for="(item, index) in routeList"
+          v-for="(item, index) in currentRoutes"
           :key="index"
           :data-index="index"
           class="float-left nav nav-btn"
@@ -127,6 +127,9 @@ import Summary from "../pages/persona/Summary.vue";
 // 用于动态变更头部背景图片
 const _styleSheet = document.styleSheets[1];
 
+const canvas = document.createElement("canvas");
+const context = canvas.getContext && canvas.getContext("2d");
+
 export default {
   name: "Persona",
   components: {
@@ -136,7 +139,6 @@ export default {
   inject: ["appReload"],
   data() {
     return {
-      // currentComponentName: "Summary",
       routeList: [
         {
           name: "概要",
@@ -153,6 +155,7 @@ export default {
         },
         {
           name: "消息",
+          loginRoute: true,
           keyword: "message",
           route: {
             name: "messageList",
@@ -161,6 +164,7 @@ export default {
         },
         {
           name: "设置",
+          loginRoute: true,
           keyword: "preference",
           route: {
             name: "account",
@@ -182,6 +186,17 @@ export default {
   },
   computed: {
     ...mapGetters(["isLogin", "editorShow", "userId"]),
+    filteredRoutes() {
+      return this.routeList.filter(({ loginRoute }) => !loginRoute);
+    },
+    // 登录、退出登录，从用户自己的界面跳转到别人的界面都需要改变
+    currentRoutes() {
+      return this.isLogin
+        ? this.isSelf
+          ? this.routeList
+          : this.filteredRoutes
+        : this.filteredRoutes;
+    },
     isSelf() {
       return this.userId === this.userBasicInfo?.userId;
     },
@@ -195,6 +210,7 @@ export default {
   watch: {
     "$route.params": {
       handler: async function ({ username }, from) {
+        // 如果是从某个人的个人主页跳转到另一个人的个人主页上，重新加载
         if (from && username !== from.username) {
           this.appReload();
 
@@ -205,14 +221,8 @@ export default {
         if (!this.hasFirstLoaded && (!from || username !== from.username)) {
           await this.getUserBasicInfo(username);
 
-          if (this.shouldFilterRoute) {
-            this.routeList = this.routeList.filter(
-              (item) => !["消息", "设置"].includes(item.name)
-            );
-          }
-
           // 更细路由参数
-          this.routeList.forEach(({ route }, index) => {
+          this.routeList.forEach(({ route }) => {
             route.params.username = this.userBasicInfo.username;
           });
 
@@ -251,6 +261,8 @@ export default {
 
       this.$bus.$on("updateHeaderAvatar", (imgUrl) => {
         this.userBasicInfo.avatar = imgUrl;
+
+        this.excludeCache.push("Summary");
       });
     }
   },
@@ -301,15 +313,15 @@ export default {
 
         const _this = this;
 
-        img.onload = function () {
+        img.onload = () => {
           // URL.revokeObjectURL(this.src)
-          const RGB = _this.getRGB(this);
+          const RGB = this.getRGB(img);
 
           const average = Object.values(RGB).reduce((p, n) => p + n) / 3;
 
           const theme = average <= 128 ? "light-theme" : "dark-theme";
 
-          _this.headerTheme = theme;
+          this.headerTheme = theme;
 
           resolve();
         };
@@ -320,25 +332,23 @@ export default {
       });
     },
     getRGB(imgEl) {
-      var blockSize = 5, // only visit every 5 pixels
-        defaultRGB = {
-          r: 0,
-          g: 0,
-          b: 0,
-        }, // for non-supporting envs
-        canvas = document.createElement("canvas"),
-        context = canvas.getContext && canvas.getContext("2d"),
-        data,
-        width,
-        height,
-        i = -4,
-        length,
-        rgb = {
-          r: 0,
-          g: 0,
-          b: 0,
-        },
-        count = 0;
+      // only visit every 5 pixels
+      const blockSize = 5;
+
+      // for non-supporting envs
+      const defaultRGB = {
+        r: 0,
+        g: 0,
+        b: 0,
+      };
+
+      // prettier-ignore
+      let data, width, height, i = -4, length, count = 0,
+          rgb = {
+            r: 0,
+            g: 0,
+            b: 0,
+          };
 
       if (!context) {
         return defaultRGB;
@@ -352,7 +362,9 @@ export default {
       context.drawImage(imgEl, 0, 0);
 
       try {
-        data = context.getImageData(0, 0, width, height);
+        data = context.getImageData(0, 0, width, height, {
+          willReadFrequently: true,
+        });
       } catch (e) {
         /* security error, img on diff domain */
         return defaultRGB;
@@ -375,17 +387,19 @@ export default {
       return rgb;
     },
     onSwitchRoute({ target }) {
-      const { name } = this.$route;
+      if (target.tagName === "LI") {
+        const { name } = this.$route;
 
-      const { index } = target.dataset;
+        const { index } = target.dataset;
 
-      const { route } = this.routeList.at(+index);
+        const { route } = this.routeList.at(+index);
 
-      if (route.name === name) return false;
+        if (route.name === name) return false;
 
-      this.currentActive = +index;
+        this.currentActive = +index;
 
-      this.$router.push(route);
+        this.$router.push(route);
+      }
     },
     onCreatePrivate() {
       const { username, userId } = this.userBasicInfo;

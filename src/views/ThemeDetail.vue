@@ -1,37 +1,70 @@
 <template>
   <page-loading :loading="!isLoaded">
     <!-- 加载完毕且有数据才显示 -->
-    <div id="detail" v-if="contentVisibe" key="content" @click="onScaleImage">
-      <!-- 话题标题 -->
-      <section class="flex flex-col flex-wrap w-9/10 pt-5 mb-3 pb-5">
-        <!-- 标题 -->
-        <h1 class="w-full text-2xl font-semibold font-sans mb-1 text-gray-700">
-          {{ detail.title }}
-        </h1>
-        <!-- 标签 -->
-        <div class="space-x-3">
-          <Type
-            :name="detail.category[0].name"
-            :title="detail.category[0].description"
-          />
-          <Type v-for="tag in detail.tags" :key="tag" :name="tag" />
-        </div>
-      </section>
+    <div
+      id="detail"
+      v-if="contentVisibe"
+      key="content"
+      @click="onScaleImage"
+      class="flex"
+    >
+      <!-- 主内容宽度 3/4 -->
+      <div class="flex-[3]">
+        <!-- 话题标题 -->
+        <section class="flex flex-col flex-nowrap pt-5 mb-3 pb-5">
+          <!-- 标题 -->
+          <h1
+            class="flex justify-between w-full text-2xl font-semibold font-sans mb-1 text-gray-700 space-x-3"
+          >
+            <span>{{ detail.title }}</span>
+            <!-- <a-button
+              type="primary"
+              class="!flex items-center space-x-1.5"
+              @click="onSubscribe"
+            >
+              <Icon name="plus" /><span class="text-base">关注</span>
+            </a-button> -->
+            <button
+              v-if="isLogin"
+              class="shadow-md px-2.5 py-1.5 rounded-md outline-none space-x-1 flex items-center transition-colors duration-300"
+              :class="[
+                detail.isSubscribe
+                  ? 'bg-gray-300 hover:bg-gray-400'
+                  : 'bg-green-400 hover:bg-green-500 text-white',
+              ]"
+              @click="subscribeThrottleFn"
+            >
+              <Icon :name="detail.isSubscribe ? 'correct' : 'plus'" />
+              <span class="text-base">{{
+                detail.isSubscribe ? "已关注" : "关注"
+              }}</span>
+            </button>
+          </h1>
+          <!-- 标签 -->
+          <div class="space-x-3">
+            <Type
+              :name="detail.category[0].name"
+              :title="detail.category[0].description"
+            />
+            <Type v-for="tag in detail.tags" :key="tag" :name="tag" />
+          </div>
+        </section>
 
-      <div class="flex">
-        <!-- 主内容 占据宽度 2/3 -->
-        <div id="detail-content" class="flex-[2]">
+        <div id="detail-content" class="w-full" ref="detail">
           <div class="h-0 border-b-3 rounded-md"></div>
           <reply
-            v-for="(reply, index) in detail.replies"
+            v-for="(reply, index) in themeReplies"
             :key="index"
             :reply="reply"
             ref="reply"
-            :showResolve="shouldShowResolveIcon"
+            :showResolve="shouldShowResolveIcon && !!index"
             @hook:mounted="collectVNodesOffset(index)"
             @moveToRef="handleReplyMove"
+            @toggleSupport="onToggleSupport(reply)"
+            @toggleBookmark="onToggleBookmark(reply)"
+            @toggleResolved="onToggleResolve(reply)"
           >
-            <!-- 主题的统计信息 -->
+            <!-- 以下为主题的统计信息, 即 index === 0 -->
             <div
               v-if="!index"
               class="px-3 py-2 bg-gray-100 rounded-md mt-5 flex space-x-5 shadow-md"
@@ -111,27 +144,25 @@
             </div>
           </reply>
         </div>
+      </div>
 
-        <!-- 时间线 占据宽度 1/3 -->
-        <div
-          id="timeline"
-          class="hidden lg:flex flex-1 justify-center select-none ml-3"
-        >
-          <!-- 
+      <!-- 时间线 占据宽度 1/4, 在 lg 以下隐藏 -->
+      <div
+        id="timeline"
+        class="hidden lg:flex flex-1 justify-center select-none ml-3"
+      >
+        <!-- 
               sticky 生效的注意事项
-              1. 父元素不能overflow:hidden或者overflow:auto属性
+              1. 直系父元素不能overflow-x-x: hidden 或者overflow:auto属性
               2. 必须指定top、bottom、left、right4个值之一，否则只会处于相对定位
               3. 父元素的高度不能低于sticky元素的高度
            -->
-          <div
-            class="sticky top-30 h-max text-base"
-            v-if="true || (timeList && timeList.length > 0)"
-          >
-            <TimeLine :offsets="replyTopOffsets" :times="timeList" />
-          </div>
+        <div class="text-base" v-if="timeList && timeList.length > 0">
+          <TimeLine :offsets="replyTopOffsets" :times="timeList" />
         </div>
       </div>
     </div>
+    <!-- 无效 themeId -->
     <div
       v-else-if="isLoaded && !detail"
       class="w-full h-leave-header flex items-center justify-center"
@@ -155,13 +186,20 @@
 <script>
 import Reply from "../components/theme/Reply.vue";
 import TimeLine from "../components/theme/TimeLine.vue";
-import { timeFormat } from "../utils/format";
 import Photo from "../components/universe/ImageViewer.vue";
+import { mapGetters } from "vuex";
 
 // 所有回复中的内容中存在的图片，用于懒加载
 let lazyImges = [];
 
 const viewport = document.documentElement;
+
+// 用于保存头部的切换信息
+let headerInfo = null;
+
+let io = null;
+
+let timer = null;
 
 export default {
   name: "ThemeDetail",
@@ -170,11 +208,31 @@ export default {
     Reply,
     TimeLine,
   },
-  // provide() {
-  //   return {
-  //     PhotoVNode: Photo,
-  //   };
-  // },
+  beforeRouteLeave(from, to, next) {
+    const { _id } = this.detail;
+
+    if (this.isLogin) {
+      // 记录离开该主题的时间，用于关注的主题的最新回复
+      this.socket.emit("updateThemeViewTime", {
+        id: _id,
+        user: this.userId,
+        date: Date.now(),
+      });
+
+      this.socket.off("updateThemeViewTime");
+
+      this.$bus.$emit("clearThemeLatest", _id);
+      this.$bus.$off("clearThemeLatest");
+    }
+
+    next();
+  },
+  provide() {
+    return {
+      href: location.href,
+      freshOffsets: this.recollectOffset.bind(this),
+    };
+  },
   data() {
     return {
       isLoaded: false,
@@ -184,15 +242,20 @@ export default {
       // 所有回复的创建时间组成的数据
       timeList: [],
       timer: null,
+      // 在刚进入详情页时是否已经跳转到对应的 reply 位置
+      hasComeInMove: false,
     };
   },
   computed: {
+    ...mapGetters(["isLogin", "userId"]),
     contentVisibe() {
       return this.isLoaded && this.detail;
     },
-    replyVnodes() {
-      return this.$refs.reply;
-    },
+    // 做一个获取 el 的缓存,
+    // #BUG 不能缓存，否则元素不更新
+    // replyVnodes() {
+    //   return this.$refs.reply;
+    // },
     themeReplies() {
       return this.detail.replies;
     },
@@ -212,17 +275,18 @@ export default {
 
       return distinct;
     },
-    format() {
-      return (time) => timeFormat(time, false);
-    },
     // 是否显示解决方案的图标
     shouldShowResolveIcon() {
       // 已登录 + 该贴是登录用户创建 + 帖子未含有解决方案 + 帖子不是第一个
+      // 主题层面，如果某个帖子为解决方案，则可以显示，其他的则不显示
       return (
         this.isLogin &&
-        this.userId === this.topicDetail.creatorId &&
-        !this.topicDetail.isResolve
+        this.userId === this.detail.creatorId &&
+        !this.detail.isResolve
       );
+    },
+    subscribeThrottleFn() {
+      return this.throttle(this.onSubscribe, 500, true);
     },
   },
   watch: {
@@ -237,41 +301,67 @@ export default {
     replyTopOffsets() {
       const { rId } = this.$route.query;
 
-      if (rId) {
+      if (rId && !this.hasComeInMove) {
         setTimeout(() => {
           this.handleReplyMove(rId);
         }, 500);
       }
 
-      lazyImges = [].slice.call(document.querySelectorAll("img[data-src]"));
-
-      this.lazyloadImg(lazyImges);
+      // 当 replyTopOffsets 更新完成，说明所有回复元素已渲染，开始监听图片的插入
+      if (this.$refs.detail) {
+        io.observe(this.$refs.detail, { childList: true, subtree: true });
+      }
     },
   },
   async mounted() {
-    window.addEventListener("scroll", this.onPageScroll);
+    let onPageScroll = this.throttle(this.toggleHeaderTitle, 100, true, this);
+    //
+    window.addEventListener("scroll", onPageScroll);
+    this.$once("hook:destroyed", () => {
+      window.removeEventListener("scroll", onPageScroll);
+      onPageScroll = null;
+    });
 
+    // 收集懒加载图片
+    lazyImges = [].slice.call(document.querySelectorAll("img[data-src]"));
+    // 初始加载先尝试渲染一遍
+    this.lazyloadImg(lazyImges);
+
+    io = new IntersectionObserver((_) => {
+      // 在图片被插入时重新收集 offsets
+      this.recollectOffset();
+    });
+
+    // 在编辑器中点击回复，使得可以自动跳转
     this.$bus.$on("moveToRef", this.handleReplyMove);
-  },
-  beforeDestroy() {
-    window.removeEventListener("scroll", this.onPageScroll);
 
-    this.setHeaderTitle(null);
+    // 更改关注按钮的状态
+    this.$bus.$on("toggleSubButton", this.toggleSubButton);
+  },
+
+  beforeDestroy() {
+    // 清空头部信息
+    this.busEmitFn(null);
+
+    lazyImges = [];
+    headerInfo = null;
+
+    this.$bus.$off("toggleSubButton");
+    this.$bus.$off("moveToRef");
+
+    io = null;
   },
   methods: {
     async copeDetailFetch(themeId) {
-      // 用于统计用户是否已阅读该话题
-      const userId = JSON.parse(localStorage.getItem("forum_u_id"));
-
       // prettier-ignore
-      const result = await this.$api.getTopicDetail(themeId, userId);
+      const theme = await this.$api.getTopicDetail(themeId, this.userId);
 
-      if (!result) {
+      if (!theme) {
         this.isLoaded = true;
         return false;
       }
 
-      const theme = result[0];
+      theme.isSubscribe = theme.isSubscribe ?? false;
 
       const replies = theme.replies;
 
@@ -281,20 +371,44 @@ export default {
        */
       replies.unshift(this.generateReply(theme));
 
-      // 给每个 reply 添加额外属性，以辅助业务逻辑
-      replies.forEach((reply, index) =>
-        this.setExtraProperty(theme, reply, index)
-      );
+      /**
+       * 如果已登录, 则通过每个回复的 id 查询用户是否点赞了该贴
+       * 不将所有点赞 id 存储在本地是防止点赞量过大导致的数据加载过慢
+       */
+      let userSupports = [];
+      let userBookmarks = [];
+      if (this.isLogin) {
+        const ids = replies.map(({ _id }) => _id);
+        userSupports = await this.$api.getUserThemeLikes(ids);
+        userBookmarks = await this.$api.getUserThemeBookmarks(ids);
+      }
+
+      console.log(userSupports);
+
+      replies.forEach((reply, index) => {
+        // 设置是否点赞
+        reply.isSupport = !!userSupports[index];
+        // 设置是否收藏
+        reply.isBookmark = !!userBookmarks[index];
+        // 给每个 reply 添加额外属性，以辅助业务逻辑
+        this.setExtraProperty(theme, reply, index);
+      });
 
       this.timeList = replies.map(({ createTime }) => createTime);
 
       this.detail = theme;
 
+      document.title = "[Rao Forum]: " + theme.title;
+
+      // 缓存头部信息
+      headerInfo = this.getHeaderInfo();
+
       setTimeout(() => (this.isLoaded = true), 300);
     },
+    // 将主题信息也设置为一个 reply 放置在顶端
     generateReply(topic) {
       return {
-        supports: topic.supports,
+        supportLen: topic.supportLen,
         categoryId: topic.categoryId,
         topicId: topic._id,
         _id: topic._id,
@@ -305,17 +419,16 @@ export default {
         ...topic.creatorInfo,
       };
     },
+    // 给每一个 reply 设置额外信息
     setExtraProperty(theme, reply, index) {
       const { isResolve, solution, creatorId } = theme;
 
       Object.assign(reply, {
         creatorId,
         // 是否是主题的作者
-        isCreator: index === 0,
+        isCreator: index == 0,
         // 当前 reply 的下标从 1 开始，以辅助时间线的运转
         posi: index + 1,
-        // 该 reply 的获得的点赞数
-        supportLen: reply.supports.length,
         // 该主题的标题
         themeTitle: theme.title,
         // 主题创建时间
@@ -327,41 +440,75 @@ export default {
         repliesLen: theme.replies.length,
       });
     },
-    // 单独配置用于清除滚动事件
-    onPageScroll() {
-      this.throttle(this.toggleHeaderTitle, 100, true, this)();
-    },
     // 控制头部标题的显隐
     toggleHeaderTitle() {
-      const scrollY = window.pageYOffset;
+      const currTop = window.scrollY;
+      const canDeliver = currTop > 60;
 
-      if (scrollY >= 60) {
-        const { title, category, tags } = this.detail;
+      this.busEmitFn(canDeliver ? headerInfo : null);
 
-        // 根据当前的话题类目与标签添加额外信息
-        const info = { title };
-
-        if (category || category.length) {
-          const cate = category[0];
-          info["category"] = {
-            description: cate.description,
-            name: cate.name,
-            alias: cate.alias,
-          };
+      clearTimeout(timer);
+      // 防止滚动太快在 scrollY 的值大于 60 时，页面已经触顶
+      timer = setTimeout(() => {
+        if (currTop >= 60 && window.scrollY < 60) {
+          this.busEmitFn(null);
         }
+      }, 100);
 
-        tags && (info["tags"] = tags.map((i) => i));
-
-        this.setHeaderTitle(Object.freeze(info));
-      } else {
-        this.setHeaderTitle(null);
-      }
-
-      // 用于图片懒加载
+      // 用于图片懒加载, 本来不应该出现在这，但也是 onscroll 事件，就索性放一起了
       lazyImges.length && this.lazyloadImg(lazyImges);
     },
-    setHeaderTitle(info) {
-      this.$bus.$emit("titleEmerge", info);
+    getHeaderInfo() {
+      const { title, category, tags } = this.detail;
+
+      // 根据当前的话题类目与标签添加额外信息
+      const info = { title };
+
+      // category => category copy
+      if (category || category.length) {
+        const { description, name, alias } = category[0];
+        info.category = { description, name, alias };
+      }
+
+      // tag => tag copy
+      if (tags) {
+        info.tags = tags.map((i) => i);
+      }
+
+      return info;
+    },
+    // 用户订阅主题信息，当有新的回复时通知用户
+    async onSubscribe() {
+      if (!this.isLogin) {
+        this.$message.info("请先登录~");
+        return false;
+      }
+
+      const { _id: themeId, isSubscribe } = this.detail;
+      // 取消 0， 关注 1
+      const type = +!isSubscribe;
+
+      const result = await this.$api.toggleSubscribe(themeId, type);
+
+      if (result === "success") {
+        if (type) {
+          // 关注
+          this.$message.success("已关注!");
+          this.detail.isSubscribe = true;
+        } else {
+          // 取消关注
+          this.$message.success("已取消关注!");
+          this.detail.isSubscribe = false;
+        }
+
+        // 在头部的 User 模块的关注面板中增加或删除订阅
+        this.$bus.$emit("toggleSubscribe", { type, detail: this.detail });
+      } else {
+        this.$message.error("操作失败");
+      }
+    },
+    toggleSubButton() {
+      this.detail.isSubscribe = !this.detail.isSubscribe;
     },
 
     // ------------------------- 回复组件相关 ---------------------------
@@ -374,6 +521,8 @@ export default {
       const currVNode = this.$refs.reply[targetReplyIndex];
 
       if (currVNode) {
+        this.hasComeInMove = false;
+
         const targetEl = currVNode.$el;
 
         const targetOffset = this.replyTopOffsets[targetReplyIndex];
@@ -384,6 +533,8 @@ export default {
 
         setTimeout(() => {
           targetEl.classList.remove("move-to-animation");
+
+          this.hasComeInMove = true;
         }, 2000);
       }
     },
@@ -406,10 +557,12 @@ export default {
       for (let i = 0; i < lazyImges.length; i++) {
         let img = lazyImges[i];
 
-        if (this.isVisible(img)) {
+        if (this.isImgVisible(img)) {
           img.src = img.getAttribute("data-src");
 
           lazyImges.splice(i, 1);
+
+          // this.recollectOffset();
 
           i--;
         }
@@ -418,7 +571,7 @@ export default {
     /**
      * @param { HTMLImageElement } element
      */
-    isVisible(element) {
+    isImgVisible(element) {
       let rect = element.getBoundingClientRect();
       // 用户不管是从上向下、从下向上、从左向右、从右向左滑动，都可以判断当前元素是否在可视区域
       return (
@@ -428,15 +581,56 @@ export default {
         rect.right > 0
       );
     },
+    // 切换对应 reply 的 isSupport 的值
+    onToggleSupport(reply) {
+      const currStatus = reply.isSupport;
+
+      reply.isSupport = !currStatus;
+
+      if (currStatus) reply.supportLen -= 1;
+      else reply.supportLen += 1;
+    },
+    // 切换对应 reply 的 isBookmark 的值
+    onToggleBookmark(reply) {
+      reply.isBookmark = !reply.isBookmark;
+    },
+    // 切换对应 reply 的 isSolution 的值
+    onToggleResolve(reply) {
+      reply.isSolution = !reply.isSolution;
+      this.detail.isResolve = !this.detail.isResolve;
+    },
+    busEmitFn(info) {
+      this.$bus.$emit("titleEmerge", info);
+    },
 
     // ------------------------- 时间线相关 ----------------------------
 
     // 每个回复元素挂载时记录元素偏移信息
-    // BUG：在展开引用回复时，offset 应该刷新
-    collectVNodesOffset(index) {
-      const { offsetTop } = this.replyVnodes[index].$el;
+    /**
+     * @param { number } index $refs.reply 的序号
+     * @param { boolean } nextTick 是否需要在 nextTick 之后获取
+     */
+    async collectVNodesOffset(index, nextTick = true) {
+      // 不适用 nextTick 会导致 offsetTop 不准确
+      if (nextTick) await this.$nextTick();
+
+      const { offsetTop } = this.$refs.reply[index].$el;
+
+      if (index === 5) {
+        console.log(offsetTop);
+      }
 
       this.replyTopOffsets.push(offsetTop);
+    },
+    //
+    recollectOffset() {
+      this.replyTopOffsets = [];
+
+      const len = this.$refs.reply.length;
+
+      for (let i = 0; i < len; i++) {
+        this.collectVNodesOffset(i, false);
+      }
     },
   },
 };
@@ -454,70 +648,6 @@ export default {
   }
   100% {
     background-color: #fff;
-  }
-}
-
-.reply-content {
-  pre {
-    @apply rounded-lg p-3 my-4 shadow-xl;
-
-    div {
-      padding: 10px 15px;
-      border-radius: 5px;
-      white-space: pre-line;
-      font-size: 14px;
-      margin: 10px 0px;
-    }
-
-    span {
-      font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-        monospace;
-      line-height: 1.6;
-    }
-  }
-
-  a {
-    @apply underline underline-offset-2 underline-green-300;
-  }
-
-  h1,
-  h2,
-  h3 {
-    @apply py-3;
-  }
-
-  h1 {
-    @apply text-3xl font-extralight;
-  }
-
-  h2 {
-    @apply text-2xl font-extralight;
-  }
-
-  p {
-    @apply py-3;
-  }
-
-  blockquote {
-    @apply px-3 py-1 m-0 border-l-5 border-l-gray-300
-  bg-gray-50 text-gray-600 my-3 rounded-sm;
-
-    strong {
-      color: #6a737d;
-    }
-  }
-
-  ol,
-  ul {
-    @apply list-inside my-3;
-  }
-
-  ul {
-    @apply list-disc;
-  }
-
-  img {
-    @apply shadow-md rounded-[10px] cursor-pointer my-2;
   }
 }
 </style>

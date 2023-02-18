@@ -16,9 +16,7 @@ export function getUserInfo(params) {
   return handleRequest("/common/userInfo", params);
 }
 
-export async function search(
-  searchObj = { searchVal: "", page: 1, pageSize: 5 }
-) {
+export async function search(searchObj) {
   const result = await handleRequest("/common/search", searchObj);
 
   return result ?? { records: [], users: [], total: 0 };

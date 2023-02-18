@@ -1,108 +1,112 @@
 <template>
-  <div class="mail-check select-none">
-    <template>
-      <div class="main-h flex p-10 flex-col md:flex-row">
-        <div class="w-90 items-center hidden md:flex select-none flex-shrink-0">
-          <img :src="waitingImg" :draggable="false" />
-        </div>
-        <div
-          class="divider border-l mr-10 h-2/3 self-center hidden md:block"
-        ></div>
-        <div
-          class="min-w-120 flex-1"
-          :class="{ 'flex items-center justify-center': isCaptchaCorrect }"
-        >
-          <section class="flex flex-col py-20" v-if="!isCaptchaCorrect">
-            <h1 class="font-bold text-2xl text-gray-500 mt-10">
-              一封包含验证码的邮件已发送至你的邮箱 <br /><br />
-            </h1>
-            <!--  -->
-            <div class="flex space-x-5 items-center mt-10">
-              <h2 class="font-bold text-lg whitespace-nowrap text-gray-600">
-                验证码 :
-              </h2>
-              <a-input
-                v-model="captcha"
-                class="flex-1 transition-all duration-200"
-                ref="ipt"
-                allowClear
-              >
-              </a-input>
-            </div>
-            <p
-              class="text-gray-400 text-sm font-thin mt-3 ml-21 tracking-wider clear-both"
-            >
-              <span class="float-left">
-                <transition name="fadeInOut">
-                  <!-- 无错误显示验证码过期时间，有错误显示错误信息 -->
-                  <span v-if="!errorMsg">{{ timeTip }}</span>
-                  <span v-else class="text-red-400">{{ errorMsg }}</span>
-                </transition>
-              </span>
-              <transition name="fadeInOut">
-                <!-- 验证码过期，重新发送 -->
-                <span
-                  class="float-right space-x-1 flex items-center"
-                  v-show="responseType === 3"
+  <transition name="slide-fade">
+    <div v-show="isTransiOver" class="mail-check select-none">
+      <template>
+        <div class="main-h flex p-10 flex-col md:flex-row">
+          <div
+            class="w-90 items-center hidden md:flex select-none flex-shrink-0"
+          >
+            <img :src="waitingImg" :draggable="false" />
+          </div>
+          <div
+            class="divider border-l mr-10 h-2/3 self-center hidden md:block"
+          ></div>
+          <div
+            class="min-w-120 flex-1"
+            :class="{ 'flex items-center justify-center': isCaptchaCorrect }"
+          >
+            <section class="flex flex-col py-20" v-if="!isCaptchaCorrect">
+              <h1 class="font-bold text-2xl text-gray-500 mt-10">
+                一封包含验证码的邮件已发送至你的邮箱 <br /><br />
+              </h1>
+              <!--  -->
+              <div class="flex space-x-5 items-center mt-10">
+                <h2 class="font-bold text-lg whitespace-nowrap text-gray-600">
+                  验证码 :
+                </h2>
+                <a-input
+                  v-model="captcha"
+                  class="flex-1 transition-all duration-200"
+                  ref="ipt"
+                  allowClear
                 >
-                  <transition name="fadeInOut">
-                    <Icon v-if="isResending" name="loading" spin />
-                    <Icon
-                      v-else-if="hasResended"
-                      name="correct"
-                      class="text-green-400"
-                    />
-                  </transition>
-                  <span
-                    @click="resendCaptcha"
-                    :class="[resendCursor, resendDecration]"
-                    >{{ resendText }}</span
-                  >
-                </span>
-              </transition>
-            </p>
-            <a-button
-              type="primary"
-              @click="checkEmail"
-              :loading="isChecking"
-              class="mt-5"
-              :disabled="isResending"
-            >
-              {{ buttonText }}
-            </a-button>
-          </section>
-          <transition name="slide-fade">
-            <div
-              v-if="isCaptchaCorrect"
-              class="flex flex-col items-center justify-center"
-            >
-              <a-result
-                status="success"
-                title="验证成功"
-                :subTitle="successTitle"
-              >
-              </a-result>
+                </a-input>
+              </div>
               <p
-                v-show="isReset && isCaptchaCorrect"
-                class="my-2 text-green-400 font-thin"
+                class="text-gray-400 text-sm font-thin mt-3 ml-21 tracking-wider clear-both"
               >
-                请重新登录
+                <span class="float-left">
+                  <transition name="fadeInOut">
+                    <!-- 无错误显示验证码过期时间，有错误显示错误信息 -->
+                    <span v-if="!errorMsg">{{ timeTip }}</span>
+                    <span v-else class="text-red-400">{{ errorMsg }}</span>
+                  </transition>
+                </span>
+                <transition name="fadeInOut">
+                  <!-- 验证码过期，重新发送 -->
+                  <span
+                    class="float-right space-x-1 flex items-center"
+                    v-show="responseType === 3"
+                  >
+                    <transition name="fadeInOut">
+                      <Icon v-if="isResending" name="loading" spin />
+                      <Icon
+                        v-else-if="hasResended"
+                        name="correct"
+                        class="text-green-400"
+                      />
+                    </transition>
+                    <span
+                      @click="resendCaptcha"
+                      :class="[resendCursor, resendDecration]"
+                      >{{ resendText }}</span
+                    >
+                  </span>
+                </transition>
               </p>
-              <p class="text-gray-600">
-                没反应 ? 点击
-                <router-link
-                  class="text-green-400 hover:(underline underline-offset-2)"
-                  to="/"
-                  >这里</router-link
+              <a-button
+                type="primary"
+                @click="checkEmail"
+                :loading="isChecking"
+                class="mt-5"
+                :disabled="isResending"
+              >
+                {{ buttonText }}
+              </a-button>
+            </section>
+            <transition name="slide-fade">
+              <div
+                v-if="isCaptchaCorrect"
+                class="flex flex-col items-center justify-center"
+              >
+                <a-result
+                  status="success"
+                  title="验证成功"
+                  :subTitle="successTitle"
                 >
-                回到首页
-              </p>
-            </div>
-          </transition>
+                </a-result>
+                <p
+                  v-show="isReset && isCaptchaCorrect"
+                  class="my-2 text-green-400 font-thin"
+                >
+                  请重新登录
+                </p>
+                <p class="text-gray-600">
+                  没反应 ? 点击
+                  <router-link
+                    class="text-green-400 hover:(underline underline-offset-2)"
+                    to="/"
+                    >这里</router-link
+                  >
+                  回到首页
+                </p>
+              </div>
+            </transition>
+          </div>
         </div>
-      </div>
-    </template>
-  </div>
+      </template>
+    </div>
+  </transition>
 </template>
 
 <script>
@@ -118,6 +122,7 @@ export default {
   },
   data() {
     return {
+      isTransiOver: false,
       successTitle: "",
       timer: null,
       currTime: 3,
@@ -140,22 +145,15 @@ export default {
     user() {
       return atob(this.$route.params.u);
     },
-    decryptedMail() {
-      return aesDecrypt(this.$route.query.m);
+    decryptedUser() {
+      return aesDecrypt(this.$route.query.u);
     },
     isReset() {
       return this.$route.query.reset;
     },
-    userProp() {
-      return /@/.test(this.user) ? "email" : "username";
-    },
-    statusIcon() {
-      return this.isChecked
-        ? this.isCaptchaCorrect
-          ? "el-icon-success"
-          : "el-icon-error"
-        : "";
-    },
+    // userProp() {
+    //   return /@/.test(this.user) ? "email" : "username";
+    // },
     resendCursor() {
       return this.hasResended ? "cursor-not-allowed" : "cursor-pointer";
     },
@@ -167,6 +165,10 @@ export default {
     this.redirect = this.$route.query.redirect || "";
   },
   mounted() {
+    setTimeout(() => {
+      this.isTransiOver = true;
+    }, 150);
+
     this.iptFocus();
   },
   methods: {
@@ -197,7 +199,7 @@ export default {
       const query = {
         captcha: this.captcha,
         // [this.userProp]: this.user,
-        email: this.decryptedMail,
+        user: this.decryptedUser,
         date: Date.now(),
       };
 
@@ -219,6 +221,17 @@ export default {
 
         setTimeout(async () => {
           this.isChecking = false;
+
+          const { redirect } = this.$route.query;
+
+          if (redirect) {
+            await this.$router.replace({
+              name: redirect,
+              query: Object.assign(this.$route.query, { redirect: void 0 }),
+            });
+
+            return;
+          }
 
           this.isCaptchaCorrect = true;
 

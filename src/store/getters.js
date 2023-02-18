@@ -1,10 +1,11 @@
 const userGetters = {
-  userDraft: (state) => state.user?.userInfo?.user_draft,
+  userDraft: (state) => state.user.userInfo?.user_draft,
   headerInfo: (state) => state.app?.headerInfo,
   isLogin: (state) => state.user.isLogin,
   userInfo: (state) => state.user.userInfo,
   userId: (state) => state.user.userInfo?.userId,
   username: (state) => state.user.userInfo?.username,
+  devId: (state) => state.user.devId,
 };
 
 const appGetters = {

@@ -1,7 +1,7 @@
 <template>
-  <div class="timeline text-gray-400 font-light tracking-wider">
+  <div class="timeline sticky top-30 text-gray-400 font-light tracking-wider">
     <!-- 头部 startTime -->
-    <div class="reply-time" v-date.live="times[0]"></div>
+    <div class="reply-time whitespace-nowrap" v-date.live="times[0]"></div>
 
     <!-- 滚动区域 -->
     <div
@@ -21,7 +21,10 @@
     </div>
 
     <!-- 底部 -->
-    <div class="last-reply" v-date.live="times[times.length - 1]">
+    <div
+      class="last-reply whitespace-nowrap"
+      v-date.live="times[times.length - 1]"
+    >
       {{ endTime }}
     </div>
   </div>
@@ -58,6 +61,9 @@ export default {
     currentTime() {
       return timeFormat(this.times[this.currTimeLinePosi], false);
     },
+    timelineThrottleFn() {
+      return this.throttle(this.setTimeLinePosi, 50, true, this);
+    },
   },
   watch: {
     currTimeLinePosi(val) {
@@ -67,9 +73,7 @@ export default {
       // 游标每次在纵轴上移动的距离: ( 轴总高 - 游标高度 ) / ( 总数 - 1 )
       this.offsetSize = (300 - 48) / (value.length - 1);
 
-      window.onscroll = () => {
-        this.throttle(this.setTimeLinePosi(value), 100)();
-      };
+      window.onscroll = this.timelineThrottleFn.bind(this, value);
     },
   },
   beforeDestroy() {

@@ -1,17 +1,45 @@
 <template>
-  <div id="app" class="flex min-w-125 overflow-x-hidden" v-cloak>
+  <!-- overflow-xxx 会导致子元素或孙子元素或。。 的 position: sticky 失效 -->
+  <div
+    id="app"
+    class="flex min-w-125 min-h-screen"
+    :class="{ 'overflow-x-hidden': !isInTheme }"
+    v-cloak
+  >
+    <div class="fixed w-full flex justify-center z-9999">
+      <alert
+        v-if="isOtherDeviceLogin"
+        type="info"
+        show-icon
+        closable
+        class="!absolute top-10"
+        @close="isOtherDeviceLogin = false"
+      >
+        <!-- left-1/2 transform -translate-x-1/2 -->
+        <Icon slot="closeText" name="close" />
+        <span slot="message" class="font-bold text-lg leading-3 text-gray-600">
+          通知
+        </span>
+        <p slot="description" class="font-bold text-xl text-gray-500 mt-5">
+          您的账号已经在
+          <span class="text-gray-600">{{ geoText }}</span>
+          的另一台设备上登录, 你已被强制下线!
+        </p>
+      </alert>
+    </div>
+
     <!-- 头部 -->
     <GlobalHeader />
 
     <!-- content -->
-    <section class="main w-full flex justify-center mt-15">
+    <main class="main w-full flex justify-center mt-15">
       <div
         class="w-full lg:w-4/5 max-w-275 py-5 px-3 transition-all duration-300"
       >
         <!-- 之所以在此处没用 transition 和 a-spin 是因为 router-view 中的数据请求都应该由子组件自身进行渲染 -->
         <router-view v-if="isRouterAlive" />
       </div>
-    </section>
+    </main>
 
     <!-- 编辑器 -->
     <Editor v-if="isLogin" />
@@ -34,13 +62,15 @@
 <script>
 import GlobalHeader from "./components/header/Header.vue";
 import Editor from "./components/editor/Index.vue";
-import { io } from "socket.io-client";
+import { Alert } from "ant-design-vue";
+import { mapGetters } from "vuex";
 
 export default {
   name: "App",
   components: {
     GlobalHeader,
     Editor,
+    Alert,
   },
   provide() {
     return {
@@ -59,8 +89,75 @@ export default {
   data() {
     return {
       isRouterAlive: true,
-      isLogin: false,
+      isOtherDeviceLogin: false,
+      otherDeviceGeo: null,
     };
+  },
+  computed: {
+    ...mapGetters(["isLogin", "devId"]),
+    isInTheme() {
+      return this.$route.name === "theme";
+    },
+    geoText() {
+      return (
+        this.otherDeviceGeo &&
+        Object.keys(this.otherDeviceGeo).reduce(
+          (str, key) => str + `${this.otherDeviceGeo[key]} `,
+          ""
+        )
+      );
+    },
+  },
+  watch: {
+    isLogin: {
+      handler: async function (status) {
+        if (status) {
+          const { data: userInfo } = await this.$api.vertify();
+
+          const socketMapId = `${userInfo?.userId}_${this.devId}`;
+
+          this.$store.commit("SET_USERINFO", userInfo ?? null);
+
+          this.socket.connect();
+
+          // 在服务端创建用户id 和该 socket id 的映射关系
+          this.socket.emit("conn", socketMapId);
+
+          // 连接
+          this.socket.on("conn", (data) => {
+            console.log("socket 已连接 !");
+          });
+
+          this.socket.on("connect", () => {
+            console.log("已重新链接");
+            // 断连重新发送注册 id
+            this.socket.emit("conn", socketMapId);
+          });
+
+          // 如果有其他人成功登录，则该设备强制下线
+          this.socket.on("forceLogout", async (geo) => {
+            console.log("call for logout");
+            await this.$store.dispatch("logout");
+            console.log("store logout finish");
+
+            console.log("isLogin:", this.isLogin);
+            this.isOtherDeviceLogin = true;
+            this.otherDeviceGeo = geo;
+            console.log("set Geo, beofore reload");
+            location.reload();
+            console.log("reload over");
+          });
+        } else {
+          this.socket.disconnect();
+        }
+      },
+      immediate: true,
+    },
+  },
+  async created() {
+    // 用于头部和编辑器等组件中的类目共享
+    const categories = await this.$api.getCategories();
+    this.$store.commit("SET_CATEGORY", categories || []);
   },
   methods: {
     reload() {
@@ -70,36 +167,6 @@ export default {
         this.isRouterAlive = true;
       });
     },
-  },
-  async created() {
-    const isLogin = this.$store.getters.isLogin;
-
-    this.isLogin = isLogin;
-
-    if (isLogin) {
-      const { data: userInfo } = await this.$api.vertify();
-
-      this.$store.commit("SET_USERINFO", userInfo);
-
-      const socket = io("http://localhost:3000");
-
-      // socket.on("connects", (data) => {
-      //   alert(data);
-      // });
-
-      socket.emit("connection", "client-msg");
-
-      // socket.on("chat", (data) => {
-      //   console.log("socketData:", data);
-      // });
-
-      // socket.emit("chat", "client data");
-    }
-
-    // 用于头部和编辑器等组件中的类目共享
-    const categories = await this.$api.getCategories();
-
-    this.$store.commit("SET_CATEGORY", categories || []);
   },
 };
 </script>

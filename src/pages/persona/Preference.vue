@@ -1,7 +1,9 @@
 <template>
   <div class="flex">
     <!-- 文字导航栏 -->
-    <nav class="space-y-5 min-w-[10rem]">
+    <nav
+      class="space-y-5 min-w-[10rem] transi-300 sm:-translate-x-1/1 md:(inline-block -translate-x-1/1)"
+    >
       <router-link
         v-for="nav in navList"
         :key="nav.label"
@@ -26,6 +28,8 @@
 </template>
 
 <script>
+import { Cookie } from "../../utils/tool";
+
 export default {
   name: "Preference",
   data() {
@@ -38,6 +42,21 @@ export default {
       currentType: "account",
     };
   },
+  // beforeRouteEnter(to, _, next) {
+  //   // const { username: gotoUser } = to.params;
+  //   // const { isLogin } = store.state.user;
+  //   // if (!isLogin) {
+  //   //   next("/u/" + gotoUser + "/summary");
+  //   // } else {
+  //   //   next();
+  //   // }
+  //   const isLogin = !!Cookie.get("FORUM_t");
+  //   if (!isLogin) {
+  //     next(`/u/${to.params.username}/summary`);
+  //   } else {
+  //     next();
+  //   }
+  // },
   watch: {
     $route: {
       handler({ name }) {
@@ -51,6 +70,13 @@ export default {
       immediate: true,
     },
   },
-  methods: {},
+  created() {
+    // if (!this.isLogin) {
+    //   this.$router.replace({
+    //     name: "persona",
+    //     params: { username: this.$route.params.username },
+    //   });
+    // }
+  },
 };
 </script>

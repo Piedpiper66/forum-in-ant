@@ -8,12 +8,13 @@
       class="inline-block w-2 h-2 rounded-full shadow-md"
       :style="{ background: currentBg(name) }"
     ></span>
-    <router-link
-      :to="toTagLink(name)"
+    <span
+      @click="!noLink && toTagLink()"
       class="overflow-ellipsis whitespace-nowrap overflow-hidden text-gray-600"
+      :class="{ 'hover:text-green-400 cursor-pointer': !noLink }"
     >
       {{ name }}
-    </router-link>
+    </span>
   </span>
 </template>
 
@@ -35,26 +36,31 @@ export default {
       default: false,
     },
   },
-  computed: {
+  methods: {
     toTagLink() {
-      return (name) => {
-        const isCate = Object.keys(this.categoryColorTable).includes(name);
-        return {
-          name: isCate ? "cateOnly" : "tagOnly",
-          params: {
-            category: isCate ? this.categoryColorTable[name][0] : "",
-            tagname: !isCate ? name : "",
-            type: "latest",
-          },
-        };
-      };
+      const isCate = Object.keys(this.categoryColorTable).includes(this.name);
+      let currentCateParamName;
+
+      if (
+        isCate &&
+        (currentCateParamName = this.categoryColorTable[this.name][0]) ==
+          this.$route.params.category
+      )
+        return false;
+
+      this.$router.push({
+        name: isCate ? "cateOnly" : "tagOnly",
+        params: {
+          category: isCate ? currentCateParamName : "",
+          tagname: !isCate ? this.name : "",
+          type: "latest",
+        },
+      });
     },
     currentBg() {
-      return (name) => {
-        if (!Object.keys(this.categoryColorTable).includes(name))
-          return "#a3a3a3";
-        return this.categoryColorTable[name][1];
-      };
+      if (!Object.keys(this.categoryColorTable).includes(this.name))
+        return "#a3a3a3";
+      return this.categoryColorTable[this.name][1];
     },
   },
 };

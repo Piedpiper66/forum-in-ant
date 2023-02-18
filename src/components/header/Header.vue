@@ -1,10 +1,11 @@
 <template>
   <header
     id="header"
-    class="w-full h-15 bg-white shadow-md flex justify-center fixed z-1100 select-none"
+    class="w-full h-15 transform shadow-md flex justify-center fixed z-1100 select-none"
   >
     <div
-      class="inner w-full lg:(w-4/5 px-0) px-3 h-full flex items-center justify-between max-w-275 space-x-4 transition-all duration-300"
+      class="inner relative w-full lg:(w-4/5 px-0) px-3 h-full flex items-center justify-between max-w-275 space-x-4 transition-all duration-300"
+      ref="inner"
     >
       <!-- 图标 -->
       <div class="logo transi-300 hover:scale-110" title="Rao Forum">
@@ -16,7 +17,11 @@
       <!-- 文章详情显示的标题 -->
       <section class="article-title flex-1 flex flex-col font-semibold px-3">
         <transition-group name="fadeInOut" mode="out-in">
-          <div v-if="titleInfo" class="truncate text-xl" key="title">
+          <div
+            v-if="titleInfo"
+            class="truncate text-xl text-shadow-md"
+            key="title"
+          >
             {{ titleInfo.title }}
           </div>
           <div v-if="titleInfo" class="flex items-center space-x-3" key="type">
@@ -82,6 +87,9 @@ import LoginModal from "./Login.vue";
 import RegisterModal from "./Register.vue";
 import { mapGetters } from "vuex";
 
+document.head.setAttribute("style", "filter: blur(5px)");
+const bgSetResult = !!document.head.style.filter;
+
 export default {
   name: "GlobalHeader",
   components: {
@@ -118,6 +126,10 @@ export default {
       this.registerModalShow = true;
     });
   },
+  mounted() {
+    // 不支持CSS 的 filter 属性，则设置背景为 白色
+    !bgSetResult && this.$refs.inner.style.setProperty("--bg-color", "#fff");
+  },
   methods: {
     switchLoginModal() {
       this.loginModalShow = true;
@@ -133,5 +145,19 @@ export default {
 .functional {
   @apply items-center space-x-3
   transition-opacity duration-300 hidden md:flex;
+}
+
+.inner::before {
+  content: "";
+  z-index: -1;
+  position: fixed;
+  display: block;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-color, rgba(255, 255, 255, 0.3));
+  backdrop-filter: blur(15px);
 }
 </style>

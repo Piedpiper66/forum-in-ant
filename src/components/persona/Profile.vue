@@ -68,7 +68,7 @@
           <span
             class="ml-3 space-x-1 font-thin text-gray-700"
             v-show="isSavingSuccess"
-            ><i class="el-icon-check font-bold"></i><span>已保存</span></span
+            ><Icon name="correct" class="font-bold" /><span>已保存</span></span
           >
         </transition>
       </a-form-item>
@@ -76,9 +76,12 @@
   </div>
 </template>
 <script>
+import DataLoading from "../universe/DataLoading.vue";
+
 const formData = new FormData();
 
 export default {
+  components: { DataLoading },
   name: "Profile",
   inject: ["appReload"],
   data() {
@@ -128,6 +131,7 @@ export default {
     },
     headerBgChange({ file: raw }) {
       if (this.checkImgValid(raw.type)) {
+        console.log(raw.size);
         formData.set("headerBg", raw);
 
         // 0 表示不删， 1 表示删除
@@ -184,7 +188,7 @@ export default {
           this.isSavingSuccess = false;
 
           location.reload();
-        }, 1000);
+        }, 500);
       }, 500);
 
       // formData = new FormData();
@@ -197,7 +201,7 @@ export default {
 };
 </script>
 
-<style lang="postcss" scoped>
+<style lang="postcss">
 #profile >>> .ant-form-item-label > label {
   @apply text-xl font-bold text-gray-600;
 }
