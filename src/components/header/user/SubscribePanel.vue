@@ -135,6 +135,9 @@ export default {
       // 可能该订阅已经被移除
       target && (target.latest = 0);
     },
+    /**
+     * @param { Event } e
+     */
     async persudoToggle(subscribe) {
       // 取消 0， 关注 1
       const type = +!subscribe.isSubscribe;
@@ -147,7 +150,7 @@ export default {
         subscribe.isSubscribe = !subscribe.isSubscribe;
 
         // 更改主题详情页的按钮状态
-        this.$bus.$emit("toggleSubButton");
+        this.$bus.$emit("toggleSubButton", subscribe.themeId);
       } else {
         this.$message.error("操作失败");
       }

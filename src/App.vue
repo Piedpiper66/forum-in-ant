@@ -158,6 +158,7 @@ export default {
     // 用于头部和编辑器等组件中的类目共享
     const categories = await this.$api.getCategories();
     this.$store.commit("SET_CATEGORY", categories || []);
+
   },
   methods: {
     reload() {

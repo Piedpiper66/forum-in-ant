@@ -27,26 +27,8 @@
 </template>
 
 <script>
-// import Store from "../../store";
-import { Cookie } from "../../utils/tool";
-
 export default {
   name: "Message",
-  // beforeRouteEnter(to, _, next) {
-  //   // const { username: gotoUser } = to.params;
-  //   // const { isLogin } = store.state.user;
-  //   // if (!isLogin) {
-  //   //   next("/u/" + gotoUser + "/summary");
-  //   // } else {
-  //   //   next();
-  //   // }
-  //   const isLogin = !!Cookie.get("FORUM_t");
-  //   if (!isLogin) {
-  //     next(`/u/${to.params.username}/summary`);
-  //   } else {
-  //     next();
-  //   }
-  // },
   data() {
     return {
       isLoaded: true,
@@ -68,12 +50,6 @@ export default {
         }
       },
       immediate: true,
-    },
-  },
-  methods: {
-    onToggle() {
-      // this.isAlive = false;
-      // this.$nextTick(() => (this.isAlive = true));
     },
   },
 };

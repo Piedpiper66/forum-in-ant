@@ -122,3 +122,13 @@ async function authRequest(url, query, method, headers, cancel) {
     return { message, status };
   }
 }
+
+// export function traceMaxForwards() {
+//   return request({
+//     url: "/tracecheck",
+//     method: "trace",
+//     headers: {
+//       "Max-Forwards": 3,
+//     },
+//   });
+// }

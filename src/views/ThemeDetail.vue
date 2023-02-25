@@ -507,8 +507,9 @@ export default {
         this.$message.error("操作失败");
       }
     },
-    toggleSubButton() {
-      this.detail.isSubscribe = !this.detail.isSubscribe;
+    toggleSubButton(themeId) {
+      if (this.detail._id === themeId)
+        this.detail.isSubscribe = !this.detail.isSubscribe;
     },
 
     // ------------------------- 回复组件相关 ---------------------------
@@ -611,7 +612,7 @@ export default {
      * @param { boolean } nextTick 是否需要在 nextTick 之后获取
      */
     async collectVNodesOffset(index, nextTick = true) {
-      // 不适用 nextTick 会导致 offsetTop 不准确
+      // 不使用 nextTick 会导致 offsetTop 不准确
       if (nextTick) await this.$nextTick();
 
       const { offsetTop } = this.$refs.reply[index].$el;

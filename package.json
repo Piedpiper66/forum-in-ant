@@ -34,7 +34,6 @@
     "svg-sprite-loader": "^6.0.11",
     "svgo": "^3.0.2",
     "svgo-loader": "^3.0.3",
-    "terser-webpack-plugin": "^4.2.3",
     "vue-cli-plugin-windicss": "^1.1.6",
     "vue-svg-loader": "^0.16.0",
     "vue-template-compiler": "^2.6.11"

@@ -1,7 +1,6 @@
 const { resolve } = require("path");
 const webpack = require("webpack");
 const CompressionWebpackPlugin = require("compression-webpack-plugin");
-// const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 
 const isProd = process.env.NODE_ENV === "production";
@@ -77,6 +76,7 @@ module.exports = {
     //
     if (isProd) {
       config.optimization.delete("splitChunks");
+      config.optimization.delete("minimizer");
 
       config.plugin("html").tap((args) => {
         args[0].cdn = cdn.build;
@@ -105,22 +105,22 @@ module.exports = {
     optimization: {
       minimizer: [
         new TerserPlugin({
-          test: [/\.m?js(\?.*)?$/i, /\.vue(\?.*)?$/i, /\.ss(\?.*)?$/i],
+          // test: [/\.m?js(\?.*)?$/i, /\.vue(\?.*)?$/i, /\.ss(\?.*)?$/i],
+          // include: resolve("src/"),
           parallel: true,
           extractComments: true,
           terserOptions: {
             compress: {
               drop_console: true,
-              drop_debugger: true,
             },
           },
         }),
       ],
       splitChunks: {
         chunks: "all",
-        minSize: 30000, // 字节 引入的文件大于30kb才进行分割
+        minSize: 25000,
         minChunks: 1, // 模块至少使用次数
-        maxAsyncRequests: 5, // 同时加载的模块数量最多是5个，只分割出同时引入的前5个文件
+        maxAsyncRequests: 6, // 同时加载的模块数量最多是5个，只分割出同时引入的前5个文件
         maxInitialRequests: 3, // 首页加载的时候引入的文件最多3个
         automaticNameDelimiter: "~", // 缓存组和生成文件名称之间的连接符
         name: true, // 缓存组里面的filename生效，覆盖默认命名
@@ -133,7 +133,7 @@ module.exports = {
           },
           commons: {
             name: "chunk-commons",
-            test: resolve("src/components"), // can customize your rules
+            test: resolve(__dirname, "src/components"), // can customize your rules
             minChunks: 2, //  minimum common number
             priority: 10,
             reuseExistingChunk: true,

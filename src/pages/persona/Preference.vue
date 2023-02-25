@@ -28,8 +28,6 @@
 </template>
 
 <script>
-import { Cookie } from "../../utils/tool";
-
 export default {
   name: "Preference",
   data() {
@@ -42,21 +40,6 @@ export default {
       currentType: "account",
     };
   },
-  // beforeRouteEnter(to, _, next) {
-  //   // const { username: gotoUser } = to.params;
-  //   // const { isLogin } = store.state.user;
-  //   // if (!isLogin) {
-  //   //   next("/u/" + gotoUser + "/summary");
-  //   // } else {
-  //   //   next();
-  //   // }
-  //   const isLogin = !!Cookie.get("FORUM_t");
-  //   if (!isLogin) {
-  //     next(`/u/${to.params.username}/summary`);
-  //   } else {
-  //     next();
-  //   }
-  // },
   watch: {
     $route: {
       handler({ name }) {
@@ -69,14 +52,6 @@ export default {
       },
       immediate: true,
     },
-  },
-  created() {
-    // if (!this.isLogin) {
-    //   this.$router.replace({
-    //     name: "persona",
-    //     params: { username: this.$route.params.username },
-    //   });
-    // }
   },
 };
 </script>

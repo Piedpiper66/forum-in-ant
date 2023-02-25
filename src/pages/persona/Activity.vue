@@ -82,5 +82,3 @@ export default {
   methods: {},
 };
 </script>
-
-<style lang="postcss" scoped></style>

@@ -395,7 +395,6 @@ export default {
 
           setTimeout(() => {
             ref && (this.isRefVisible = true);
-
             !ref && this.$message.error("服务器出了些小问题, 请重试");
 
             this.isRefLoading = false;
