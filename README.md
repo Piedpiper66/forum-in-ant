@@ -21,7 +21,3 @@ npm run build
 ### Customize configuration
 
 See [Configuration Reference](https://cli.vuejs.org/config/).
-
-# forum-in-ant
-
-更换为使用 ant-design, 并将部分源码重写
